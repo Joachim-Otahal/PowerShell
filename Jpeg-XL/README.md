@@ -7,7 +7,7 @@ These are two powershell scripts, wrapped in .cmd. You drag and drop a directory
 
 You need to edit line 36, $cjxl="C:\prog\jpeg-xl\cjxl.exe", to point to your cjxl.exe executable.
 
-It always uses "lossless" setting with Effort 8, unless the input picutre is above 50 MB. Currently it only accepts JPEG and PNG. Adding .GIF is easy, but since cjxl still has to fight "compress better than .gif" problems they are currently skipped.
+It always uses "lossless" setting with Effort 8, unless the input picutre is above 50 MB, then it uses effort 7. Currently it only accepts JPEG and PNG. Adding .GIF is easy, but since cjxl still has to fight "compress better than .gif" problems they are currently skipped.
 If the conversion failes due to an error or when the .JXL file is larger than the original the original will be kept.
 ## convert-to jxl recursive unicode-capable.ps1.cmd
 This is the more verbose version, but single threaded.
