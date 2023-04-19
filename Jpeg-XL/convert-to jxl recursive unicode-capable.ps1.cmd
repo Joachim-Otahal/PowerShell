@@ -23,6 +23,7 @@ Rename it to .ps1 and it can handle "&" directories, not files, and convert recu
 Versionlog:
   2021-11-?? 0.0 Wrote first version.
   2023-04-05 0.1 first version to be published, request from https://github.com/libjxl/libjxl/issues/683#issuecomment-1492947842
+  2023-04-19 0.3 Workaround for that weird random Windows 11 Get-Volume bug
 
 by Joachim Otahal, Germany, jou@gmx.net, https://joumxyzptlk.de, https://github.com/Joachim-Otahal?tab=repositories
 
@@ -60,7 +61,14 @@ if ($dlist[0].FullName.StartsWith("\") -or $dlist[0].PSIsContainer -ne $true) {
     break
 } else {
     # check whether local NTFS or not (i.e. whether unicode trick with hardlink can be used or copy method)
-    if ((Get-Volume -DriveLetter $dlist[0].FullName.Substring(0,1)).FileSystemType -eq "NTFS") {
+	# Nice bug in Windwos 11 again, the first Get-Volume sometimes failes for no reason...
+	try {
+		$drive = Get-Volume -DriveLetter $dlist[0].FullName.Substring(0,1)
+	} catch {
+		Start-Sleep 2
+    	$drive = Get-Volume -DriveLetter $dlist[0].FullName.Substring(0,1)
+    }
+    if ($drive.FileSystemType -eq "NTFS") {
         $localntfs=$true
     } else {
         $localntfs=$false
