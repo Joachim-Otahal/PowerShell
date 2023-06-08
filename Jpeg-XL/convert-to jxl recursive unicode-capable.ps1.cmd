@@ -65,9 +65,11 @@ if ($dlist[0].FullName.StartsWith("\") -or $dlist[0].PSIsContainer -ne $true) {
 	try {
 		$drive = Get-Volume -DriveLetter $dlist[0].FullName.Substring(0,1)
 	} catch {
-		Start-Sleep 2
-    	$drive = Get-Volume -DriveLetter $dlist[0].FullName.Substring(0,1)
-    }
+		start-sleep 1
+		$drive = Get-Volume -DriveLetter $dlist[0].FullName.Substring(0,1)
+		write-host "Wait 10 seconds since Windows 11 has a nice bug where Get-Volume fails on the first run." ; start-sleep 10
+		$drive = Get-Volume -DriveLetter $dlist[0].FullName.Substring(0,1)
+	}
     if ($drive.FileSystemType -eq "NTFS") {
         $localntfs=$true
     } else {
