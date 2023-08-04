@@ -6,6 +6,8 @@ They require cjxl.exe from here: https://github.com/libjxl/libjxl/releases
 These are two powershell scripts, wrapped in .cmd. You drag and drop a directory or several directories on the .CMD, and it will start the conversion. It can handle UNICODE filenames, whereas the original cjxl.exe cannot handle them.
 
 You need to edit line 39, $cjxl="C:\prog\jpeg-xl\cjxl.exe", to point to your cjxl.exe executable.
+You can set $WhatIf=$false in line 39, the it won't delete the original
+You can change $MaxThreads=5 in line 46 to fit your CPU. For a Ryzen 5950x 24 Threads seems fine. But keep an eye on your memory usage if you encode huge astronomy pictures.
 
 It always uses "lossless" setting with Effort 8, unless the input picutre is above 50 MB, then it uses effort 7. Currently it only accepts JPEG and PNG. Adding .GIF is easy, but since cjxl still has to fight "compress better than .gif" problems they are currently skipped.
 If the conversion failes due to an error or when the .JXL file is larger than the original the original will be kept.
