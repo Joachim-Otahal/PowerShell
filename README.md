@@ -1,5 +1,5 @@
 # PowerShell
-My powershell stuff
+My miscancellous powershell stuff
 
 ## Jpeg-XL
 Tools for mass converting JPEG/PNG (GIF commented out) to .JXL, but only keep the .JXL if the result is smaller and conversion went without errors.
