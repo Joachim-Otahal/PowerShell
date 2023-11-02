@@ -92,4 +92,4 @@ $EventsNTLM | Select-Object LogName,TimeCreated,MachineName,Id,
 # Uncomment one of those if you want every IP or workstation to only appear once in the log.
 #    Sort-Object WorkstationName -Unique | 
 #    Sort-Object IpAddress -Unique | 
-    Export-Csv "$Env:USERPROFILE\Desktop\NTLM-Events $Env:COMPUTERNAME $(Get-Date -Format "yyyy-MM-dd").csv" -Encoding UTF8 -NoTypeInformation -Delimiter ";"
+    Export-Csv "$Env:USERPROFILE\Desktop\NTLM-Events $Env:COMPUTERNAME $(Get-Date -Format "yyyy-MM-dd").csv" -Encoding UTF8 -NoTypeInformation # Germany: -Delimiter ";"
