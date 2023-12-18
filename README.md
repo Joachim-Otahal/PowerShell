@@ -12,5 +12,9 @@ Use NTFS compression as pure powershell method, without calling compact.exe. Sid
 
 ## NTLMv1 SMB1 detailled logging.ps1
 This activates detailled SMB1 and NTLM auditing/logging AND analyzes the eventlogs with appriopriate methods to get what needed. Requires at least Server 2012 with Powershell 5.1 and current updates.
-On subsequent runs it only analyzes the event logs when auditing/logging. Reports saved as .CSV on Desktop.
-If you are from Germany which uses ";" as default delimiter for CSV in Excel instead of "," check the last line of the script and remote the #.
+On subsequent runs it only analyzes the event logs when auditing/logging. Reports saved as .CSV on Desktop. Default delimiter is ";" for Germany, edit the script if you need it different.
+#### NTLMv1 SMB1 detailed audit and logging Scheduled Task.xml
+Task scheduler -> import. For a daily report, expecially on busy domain controllers where the security log does not span several weeks.
+
+## WakeOnLAN.ps1
+Actually working (in Server 2022 and Windows 11) example for Wake On LAN in pure powershell. Skips unconfigured adapters and does a correct broadcast address calculation in contrast to many other examples I foun don the net.
