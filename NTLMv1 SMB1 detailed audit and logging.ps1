@@ -34,8 +34,8 @@ if ($SecurityLogMaxSize -gt ($InstalledRAM/2)) {
 
 ########## SMB
 Write-Verbose "Getting SMB Events" -Verbose
-$EventsSMB = Get-WinEvent -LogName "Microsoft-Windows-SMBServer/Audit" |
-    Select-Object SystemData,EventData,XMLData,@{Name="XMLRaw";Expression={$_.ToXml() }},*
+$EventsSMB = @(Get-WinEvent -LogName "Microsoft-Windows-SMBServer/Audit" |
+    Select-Object SystemData,EventData,XMLData,@{Name="XMLRaw";Expression={$_.ToXml() }},*)
 $StartDate = Get-Date
 for ($i=0;$i -lt $EventsSMB.Count;$i++) {
     $EventsSMB[$i].XMLData = [xml]$EventsSMB[$i].XMLRaw
@@ -61,12 +61,12 @@ $EventsSMB | Select-Object LogName,TimeCreated,MachineName,Id,
 Write-Verbose "Getting NTLM Events - MAY TAKE MUCH TIME!" -Verbose
 
 # This one gets ONLY NTLMv1, for servers where security log size is too big.
-$EventsNTLM = Get-WinEvent -Logname "Security" -FilterXPath "Event[System[(EventID=4624)]]and Event[EventData[Data[@Name='LmPackageName']='NTLM V1']]" | 
-    Select-Object SystemData,EventData,XMLData,@{Name="XMLRaw";Expression={$_.ToXml() }},*
+$EventsNTLM = @(Get-WinEvent -Logname "Security" -FilterXPath "Event[System[(EventID=4624)]]and Event[EventData[Data[@Name='LmPackageName']='NTLM V1']]" | 
+    Select-Object SystemData,EventData,XMLData,@{Name="XMLRaw";Expression={$_.ToXml() }},*)
 
 # This one gets ALL NTLM
-#$EventsNTLM = Get-WinEvent -Logname security -FilterXPath "Event[System[(EventID=4624)]]and Event[EventData[Data[@Name='AuthenticationPackageName']='NTLM']]" | 
-#    Select-Object SystemData,EventData,XMLData,@{Name="XMLRaw";Expression={$_.ToXml() }},*
+#$EventsNTLM = @(Get-WinEvent -Logname security -FilterXPath "Event[System[(EventID=4624)]]and Event[EventData[Data[@Name='AuthenticationPackageName']='NTLM']]" | 
+#    Select-Object SystemData,EventData,XMLData,@{Name="XMLRaw";Expression={$_.ToXml() }},*)
 
 # Evaluate result
 Write-Verbose "Export as XML for later reevaluation to $logdirectory\NTLM-Events $Env:COMPUTERNAME $(Get-Date -Format "yyyy-MM-dd").xml" -Verbose
