@@ -1,6 +1,6 @@
 # Created as quickhack 18th December 2023 since all those examples on the internet did not work with my network configuration.
-# 23rd December 2023: Go through all network adapters and added ipv6 variant
 # For example: They tried to use "localhost", or the unconnected WLAN adapter and so on.
+# 23rd December 2023: Go through all network adapters and added ipv6 variant
 # Joachim Otahal / jou@gmx.net / https://www.joumxyzptlk.de / https://github.com/Joachim-Otahal/PowerShell
 
 # Create magic packet
