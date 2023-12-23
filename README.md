@@ -17,4 +17,4 @@ On subsequent runs it only analyzes the event logs when auditing/logging. Report
 Task scheduler -> import. For a daily report, expecially on busy domain controllers where the security log does not span several weeks.
 
 ## WakeOnLAN.ps1
-Actually working (in Server 2022 and Windows 11) example for Wake On LAN in pure powershell. Skips unconfigured adapters and does a correct broadcast address calculation in contrast to many other examples I found on the net.
+Actually working (tested with PS 5.1 on Server 2022 and Windows 11) example for Wake On LAN in pure powershell. Skips unconfigured adapters and does a correct broadcast address calculation in contrast to many other examples I found on the net + works on IPv6 as well.
