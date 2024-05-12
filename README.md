@@ -19,7 +19,7 @@ Task scheduler -> import. For a daily report, expecially on busy domain controll
 ## WakeOnLAN.ps1
 Actually working (tested with PS 5.1 on Server 2022 and Windows 11) example for Wake On LAN in pure powershell. Skips unconfigured adapters and does a correct broadcast address calculation in contrast to many other examples I found on the net + works on IPv6 as well.
 
-## Get-PropertiesRecursive
+## Get-PropertiesRecursive.ps1
 It will show all properties of an object, with all sub-properties. Output looks like this for the example:
 
 ![image](https://github.com/Joachim-Otahal/PowerShell/assets/10100281/5af65eca-224f-48f3-9788-db54277a57b7)
