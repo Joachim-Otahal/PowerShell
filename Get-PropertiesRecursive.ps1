@@ -1,6 +1,7 @@
 ﻿# Gets all properties recursively. Useful if you need a list of all sub-proerties.
 # V 0.1 Joachim Otahal, May 2024
 
+# We create an example object, including some unusual property names.
 $Car = [PSCustomObject] @{
     Tire          = [PSCustomObject] @{
         Color = "Black"
@@ -18,7 +19,6 @@ $Car = [PSCustomObject] @{
         Ordered_Feature = [bool]$true
     }
 }
-
 
 function Get-PropertiesRecursive {
     param (
@@ -44,4 +44,7 @@ function Get-PropertiesRecursive {
         }
     }
 }
+
+# Example. If we add -ParendName this way, the output will include the base object name, else it is excluded.
+
 Get-PropertiesRecursive $Car -ParentName '$Car'
