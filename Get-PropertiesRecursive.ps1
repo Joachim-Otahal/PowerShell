@@ -1,5 +1,6 @@
 ﻿# Gets all properties recursively. Useful if you need a list of all sub-proerties.
 # V 0.1 Joachim Otahal, May 2024
+# V 0.2 adding simple requesion detection and -MaxDepth, default 10, to limit more complex recursion.
 
 # We create an example object, including some unusual property names.
 $Car = [PSCustomObject] @{
@@ -20,27 +21,33 @@ $Car = [PSCustomObject] @{
     }
 }
 
+
+# Helper function to list all properties
 function Get-PropertiesRecursive {
     param (
         [Parameter(ValueFromPipeline)][object]$InputObject,
-        [String]$ParentName
+        [String]$ParentName,
+        [int]$MaxDepth = 10
     )
-    if ($ParentName) {$ParentName +="."}
+    if ($ParentName) {$ParentNameDot ="$ParentName."} else {$ParentNameDot = ""}
     foreach ($Property in $InputObject.psobject.Properties) {
-        # This puts special characters in '' like you need it when using
+        # This puts special characters in '' like you need it when using it directly with powershell
         if ($Property.Name -like "*:*" -or $Property.Name -like "* *"  -or $Property.Name -like "*-*") {
             $Name = "'$($Property.Name)'"
         } else {
             $Name = $Property.Name
         }
-        if ($Property.TypeNameOfValue.Split(".")[-1] -ne "PSCustomObject") {
+        $PropertyTypeName = $Property.TypeNameOfValue.Split('.')[-1]
+        if (($PropertyTypeName -ne "PSCustomObject" -and $PropertyTypeName -notlike "Object*") -or
+            # Catch simple recursion
+            $ParentName.Split('.')[-1] -eq $Name -or $MaxDepth -le 0) {
             [pscustomobject]@{
-                TypeName = $Property.TypeNameOfValue.Split(".")[-1]
-                Property = "$ParentName$Name"
+                TypeName = $PropertyTypeName
+                Property = "$ParentNameDot$Name"
                 Value = $Property.Value
             }
         } else {
-            Get-PropertiesRecursive $Property.Value -ParentName "$ParentName$Name"
+            Get-PropertiesRecursive $Property.Value -ParentName "$ParentNameDot$Name" -MaxDepth $($MaxDepth-1)
         }
     }
 }
