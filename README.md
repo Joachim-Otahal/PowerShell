@@ -7,6 +7,11 @@ Tools for mass converting JPEG/PNG (GIF commented out) to .JXL, but only keep th
 ## DFS-N-Tools
 Enable DFS-N-ABE, Access Based Enumeration, transfer the NTFS ACL settings if possible, and tick the "Set explicit view permissions on the DFS folder" which Microsoft Documentation says: "Not possible using Powershell". I needed it for a mass job, and dfsutil.exe failed in that environment due to complex active directory forest structure. So not much of a choice than to do it using Powershell.
 
+## Growatt COM3.ps1 ##
+Actually WORKING example how to send and read from the serial power with Powershell. Let alone sending and revieving BINARY data. In this case reading the current power from a Growatt 600 MIC using an RS485-to-USB adapter. Does anyone have the REAL documentation of Growatt Mic RS485 commands? I only found RS485 documentation for the big Growatt devices.
+
+Rant: A lot of serial port examples on the internet are half, and Register-ObjectEvent works in PSIE and manually in shell, but NOT when used in script (most weird powershell bug so far). It is like those people never actually tried to implement it.
+
 ## NTFS-Compression
 Use NTFS compression as pure powershell method, without calling compact.exe. Side effect: Can handle unicode and long paths.
 
