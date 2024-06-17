@@ -18,10 +18,10 @@ Use NTFS compression as pure powershell method, without calling compact.exe. Sid
 ## NTLMv1 SMB1 detailed audit and logging.ps1
 This activates detailled SMB1 and NTLM auditing/logging AND analyzes the eventlogs with appriopriate methods to get what needed. Requires at least Server 2012 with Powershell 5.1 and current updates.
 On subsequent runs it only analyzes the event logs when auditing/logging. Reports saved as .CSV on Desktop. Default delimiter is ";" for Germany, edit the script if you need it different.
-#### NTLMv1 SMB1 detailed audit and logging Scheduled Task.xml
+#### NTLMv1 SMB1 detailed audit and logging Scheduled Task export from Server 2022.xml
 Task scheduler -> import. For a daily report, expecially on busy domain controllers where the security log does not span several weeks.
 
-## Test-Ping-ps1 ##
+## Test-Ping-ps1
 This is a ping in pure powershell. I needed something "faster than Test-Netconnection". It sends, by default, four pings withing 800 ms, really only pings, and then gives up. You can change the TTL, Timeout and Retry settings with -TTL -TimeOut and -Retry.
 
 ## WakeOnLAN.ps1
