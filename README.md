@@ -21,6 +21,9 @@ On subsequent runs it only analyzes the event logs when auditing/logging. Report
 #### NTLMv1 SMB1 detailed audit and logging Scheduled Task.xml
 Task scheduler -> import. For a daily report, expecially on busy domain controllers where the security log does not span several weeks.
 
+## Test-Ping-ps1 ##
+This is a ping in pure powershell. I needed something "faster than Test-Netconnection". It sends, by default, four pings withing 800 ms, really only pings, and then gives up. You can change the TTL, Timeout and Retry settings with -TTL -TimeOut and -Retry.
+
 ## WakeOnLAN.ps1
 Actually working (tested with PS 5.1 on Server 2022 and Windows 11) example for Wake On LAN in pure powershell. Skips unconfigured adapters and does a correct broadcast address calculation in contrast to many other examples I found on the net + works on IPv6 as well.
 
