@@ -15,7 +15,7 @@ $LogDirectory="C:\scripts\SMB1-NTLMv1-logging"
 
 $null = New-Item -Path $LogDirectory -ItemType Directory -ErrorAction Ignore
 
-# How far back in time... Here 90 days.
+# How far back in time... Here 2 days.
 
 $OldestEvent = (Get-Date).AddDays(-2)
 $OldestEventUTC = ($OldestEvent.ToUniversalTime()).ToString("s")
@@ -75,7 +75,6 @@ if ($EndDay -ge $(Get-Date)) {
     Write-Verbose "Getting NTLM Events - MAY TAKE MUCH TIME!" -Verbose
     
     # This one gets ONLY NTLMv1, for servers where security log size is too big.
-    #$EventsNTLM = @(Get-WinEvent -Logname "Security" -FilterXPath "Event[System[(EventID=4624)]]and Event[EventData[Data[@Name='LmPackageName']='NTLM V1']]" | 
     $EventsNTLM = @(Get-WinEvent -LogName "Security" -FilterXPath "Event[System[TimeCreated[@SystemTime>'$OldestEventUTC']][Provider[@Name='Microsoft-Windows-Security-Auditing']][EventID=4624]][EventData[Data[@Name='LmPackageName']='NTLM V1']]" |
         Select-Object SystemData,EventData,XMLData,@{Name="XMLRaw";Expression={$_.ToXml() }},*)
     
