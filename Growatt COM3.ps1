@@ -42,11 +42,11 @@ function Read-Serial {
 
 # Source is Growatt documentation + serial sniffer on COM3 ! pdfcoffee.com_growatt-inverter-modbus-rtu-protocol-ii-v1-24-english-new-pdf-free.pdf
 # Modbus command for "give me your data", Growatt MIC TX-L, from register 3000 (0bb8) on, 125 registers
-[byte[]]$GetGrowattStatus2=(0x01,0x04,0x0b,0xb8,0x00,0x7d,0xb2,0x2a)
+[byte[]]$GetGrowattStatus=(0x01,0x04,0x0b,0xb8,0x00,0x7d,0xb2,0x2a)
 
-$SerialData = Read-Serial -COM "COM3" -Timeout 2 -Command $GetGrowattStatus2
-$GrowattCSVfile = $CurrentDate.ToString('yyyy-MM-dd') + "-Growatt-COM3.csv"
-$TimeStamp = $CurrentDate.ToString('yyyy-MM-dd HH:mm:ss')
+$SerialData = Read-Serial -COM "COM3" -Timeout 2 -Command $GetGrowattStatus
+$GrowattCSVfile = (Get-Date).ToString('yyyy-MM-dd') + "-Growatt-COM3.csv"
+$TimeStamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
 
 if ($SerialData) {
     $GrowattData = [pscustomobject]@{
