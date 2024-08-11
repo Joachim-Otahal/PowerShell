@@ -19,7 +19,9 @@ It will show all properties of an object, with all sub-properties. Output looks 
 Simple script which resturns the process and all child processes of a given -StartPID. If none is given the current PID is used. If recursive-resistant (i.e. does not loop endless on -StartPID 0, which is its own parent/child)
 
 ## Growatt COM3.ps1 ##
-Actually WORKING example how to send and receive from serial port with Powershell. Let alone sending and revieving BINARY data. In this case reading the current power from a Growatt 600 MIC using an RS485-to-USB adapter. Does anyone have the REAL documentation of Growatt Mic RS485 commands? I only found RS485 documentation for the big Growatt devices.
+Actually WORKING example how to send and receive from serial port with Powershell. Let alone sending and revieving BINARY data. In this case reading the current power and other data from a Growatt 600 MIC using an RS485-to-USB adapter. If your run it from Poertshell ISE it will output the values on screen. Else it will write it in a .CSV file using ";" as delimiter since, well, German Excel.
+
+![image](https://github.com/user-attachments/assets/a0a24d22-c8f6-48e1-b3d1-57cd1cbfb716)
 
 Rant: A lot of serial port examples on the internet are half, and Register-ObjectEvent works in PSIE and manually in shell, but NOT when used in script (most weird powershell bug so far). It is like those people never actually tried to implement it.
 
