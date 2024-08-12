@@ -52,7 +52,7 @@ if ($SerialData) {
     $GrowattData = [pscustomobject]@{
         Time = $TimeStamp
         OutputPower = ((($SerialData[49] * 256 + $SerialData[50])*256 + $SerialData[51]) * 256 + $SerialData[52])/10
-        Temp1 = ($SerialData[181] * 256 + $SerialData[182])/10
+        Temp1 = ($SerialData[189] * 256 + $SerialData[190])/10
         Temp5 = ($SerialData[197] * 256 + $SerialData[198])/10
         TodayEnergy = ((($SerialData[101] * 256 + $SerialData[102])*256 + $SerialData[103]) * 256 + $SerialData[104])/10
         TotalEnergy = ((($SerialData[105] * 256 + $SerialData[106])*256 + $SerialData[107]) * 256 + $SerialData[108])/10
