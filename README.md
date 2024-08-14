@@ -11,7 +11,7 @@ Tools for mass converting JPEG/PNG (GIF commented out) to .JXL, but only keep th
 Use NTFS compression as pure powershell method, without calling compact.exe. Side effect: Can handle unicode and long paths.
 
 ## Get-CRC16Modbus.ps1 ##
-There are not WORKING Powershell scripts to calculate CRC16 Modbus. So I took an actually correct working C implementation and translated it to powershell.
+There are no WORKING Powershell scripts to calculate CRC16 Modbus. So I took an actually correct working C implementation and translated it to powershell.
 
 ## Get-PropertiesRecursive.ps1
 It will show all properties of an object, with all sub-properties. Output looks like this for the example:
