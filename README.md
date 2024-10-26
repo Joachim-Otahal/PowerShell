@@ -40,3 +40,6 @@ This is a ping in pure powershell. I needed something "faster than Test-Netconne
 ## WakeOnLAN.ps1
 Actually working (tested with PS 5.1 on Server 2022 and Windows 11) example for Wake On LAN in pure powershell. Skips unconfigured adapters and does a correct broadcast address calculation in contrast to many other examples I found on the net + works on IPv6 as well.
 
+## Server2025-and-Server2022-dedup-corruption-repo-test.ps1 ##
+This is a very simple script to force the deduplication-corruption bug in nested-VM scenarios with Server 2022 and Server 2025 (Server 2019 is fine).
+Refer to this thread for more details: https://techcommunity.microsoft.com/t5/windows-server-insiders/nested-v-dedup-corruption-26100-1742-and-insider-26296-5001-and/m-p/4263322
