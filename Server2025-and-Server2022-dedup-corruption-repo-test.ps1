@@ -70,7 +70,7 @@ function BinaryWriter {
 ########## Script start
 
 do {
-    clear
+    # clear # commented out, we need the log in the shell...
     Write-Host "At which step are we?"
     Write-Host "1: Create the test file ($TestFile)."
     Write-Host "2: Modify test ($TestFile) file AFTER deduplication on L1 host did run."
@@ -95,13 +95,20 @@ do {
             }
         }
         3 {
-            $Hash = (Get-FileHash -Path $TestFile -Algorithm MD5).Hash
-            if ($Hash -eq "65BDC1B439180EC5058E2079739751A5") {
-                Write-Host -BackgroundColor DarkGreen -ForegroundColor White "$TestFile Hash is expected $Hash"
-            } else {
-                Write-Host -ForegroundColor Yellow -BackgroundColor DarkRed  "$TestFile Hash error: $Hash. Expected: 65BDC1B439180EC5058E2079739751A5"
+            try {
+                $Hash = (Get-FileHash -Path $TestFile -Algorithm MD5 -ErrorAction Stop).Hash
+                if ($Hash -eq "65BDC1B439180EC5058E2079739751A5") {
+                    Write-Host -BackgroundColor DarkGreen -ForegroundColor White "$TestFile Hash is expected $Hash"
+                }
+                if ($Hash -eq "FE86844FC3D92814461C48025D2BCB7C") {
+                    Write-Host -BackgroundColor DarkGreen -ForegroundColor White "$TestFile Hash $Hash is from Step 1, Step 2 has not been made."
+                }
+                if ($Hash -ne "FE86844FC3D92814461C48025D2BCB7C" -and $Hash -ne "65BDC1B439180EC5058E2079739751A5") {
+                    Write-Host -ForegroundColor Yellow -BackgroundColor DarkRed  "$TestFile Hash error: $Hash. Expected: 65BDC1B439180EC5058E2079739751A5"
+                }
+            } catch {
+                Write-Host -ForegroundColor Yellow -BackgroundColor DarkRed  "$TestFile open error. Has it been created?"
             }
-            $null = Read-Host "Pause, press enter to continue"
         }
     }
 } until (!$ReadHost)
