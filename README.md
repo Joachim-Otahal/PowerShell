@@ -10,7 +10,7 @@ Tools for mass converting JPEG/PNG (GIF commented out) to .JXL, but only keep th
 ## NTFS-Compression
 Use NTFS compression as pure powershell method, without calling compact.exe. Side effect: Can handle unicode and long paths.
 
-## Get-CRC16Modbus.ps1 ##
+## Get-CRC16Modbus.ps1
 There are no WORKING Powershell scripts to calculate CRC16 Modbus. So I took an actually correct working C implementation and translated it to powershell.
 
 ## Get-PropertiesRecursive.ps1
@@ -37,9 +37,18 @@ Task scheduler -> import. For a daily report, expecially on busy domain controll
 ## Test-Ping-ps1
 This is a ping in pure powershell. I needed something "faster than Test-Netconnection". It sends, by default, four pings withing 800 ms, really only pings, and then gives up. You can change the TTL, Timeout and Retry settings with -TTL -TimeOut and -Retry.
 
+## Transform-ImageColor.ps1
+Invert and/or transform image or picture color in powershell, the fast way. The examples I found for "Powershell Invert Image" or "DOTNET invert image" did it pixel by pixel. Which is VERY slow.
+So I dug around, found the much faster way to do it in DOTNET, added gamma correction since I needed it for my case, and used it in Powershell. And then "Well, why not publishing it, maybe others need it too?".
+Input can be either a filename or a [System.Drawing.Bitmap] which you just created in Powershell. Output is either a file you suply, or a [System.Drawing.Bitmap]
+
+Example: Left part is the original, right part is the inverted darkened which is then set as my non-intrusive Windows background wallpaper.
+
+![Transform-ImageColor-Example](https://github.com/user-attachments/assets/19e6842c-4b5f-49d6-965b-9caaad9b9f0a)
+
 ## WakeOnLAN.ps1
 Actually working (tested with PS 5.1 on Server 2022 and Windows 11) example for Wake On LAN in pure powershell. Skips unconfigured adapters and does a correct broadcast address calculation in contrast to many other examples I found on the net + works on IPv6 as well.
 
-## Server2025-and-Server2022-dedup-corruption-repo-test.ps1 ##
+## Server2025-and-Server2022-dedup-corruption-repo-test.ps1
 This is a very simple script to force the deduplication-corruption bug in nested-VM scenarios with Server 2022 and Server 2025 (Server 2019 is fine).
 Refer to this thread for more details: https://techcommunity.microsoft.com/t5/windows-server-insiders/nested-v-dedup-corruption-26100-1742-and-insider-26296-5001-and/m-p/4263322
