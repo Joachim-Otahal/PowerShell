@@ -2,6 +2,8 @@
 # Test-Netconnection is too slow since it test way more than I needed and is way more patient that I needed.
 # On top there is no UDP Ping.
 # 2025-04 v0 Joachim Otahal, first upload to github April 2025
+# https://github.com/Joachim-Otahal/PowerShell
+# https://joumxyzptlk.de/
 
 
 function Test-TCP {
@@ -53,7 +55,10 @@ function Test-UDP {
         [byte[]]$UDPData = [byte[]]@(1,2,3,4,5,6,7,8,9,10)
     )
     
-    Write-Verbose "Using local source port $LocalPort" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
+    if (@(53,88,123,161) -notcontains $Port) {
+        Write-Verbose "`n#########`nYOU HAVE A NEW TEST CASE! If it works, please be so kind send info to https://github.com/Joachim-Otahal/PowerShell.`n##########" -Verbose
+    }
+    Write-Verbose "Using local source port $LocalPort, destiantion $($Computer):$Port" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
 
     # https://wiki.wireshark.org/SampleCaptures
     switch ($Service) {
