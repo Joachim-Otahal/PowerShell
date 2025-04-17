@@ -42,7 +42,7 @@ UPD Ping and TCP ping. There is no non-problematic windows UDP Ping tool out the
 Written since I had to test, or better, prove various intermittent UDP failures due to a weird firewall appliance behaviour.
 Test-UPD has a predefined -Service option for DNS, SNMP, NTP and Kerberos, sending meaningful request data to get an actual response. If no option given it tests google DNS. If you have a test case for something else, you can use it too, the tools is pretty much "the source speaks for itself". Please give feedback if you have a new test-case with your example data to force a response.
 
-![grafik](https://github.com/user-attachments/assets/3ced2067-fec1-4e04-bfde-a0a581d6af5f)
+![grafik](https://github.com/user-attachments/assets/996d8103-7595-4a1e-9d5b-cc66a0cc0fdf)
 
 ## Transform-ImageColor.ps1
 Invert and/or transform image or picture color in powershell, the fast way. The examples I found for "Powershell Invert Image" or "DOTNET invert image" did it pixel by pixel. Which is VERY slow.
