@@ -40,7 +40,7 @@ This is a ping in pure powershell. I needed something "faster than Test-Netconne
 ## Test-TCP and Test-UDP faster.ps1
 UDP Ping and TCP ping. There is no non-problematic windows UDP Ping tool out there which is not flagged by AVs since those old tools are not bug free. Default Test-Netconnection is way too slow to be useful in some situations, and does no UDP testing.
 Written since I had to test, or better, prove various intermittent UDP failures due to a weird firewall appliance behaviour.
-Test-UPD has a predefined -Service option for DNS, SNMP, NTP and Kerberos, sending meaningful request data to get an actual response. If no option given it tests google DNS. If you have a test case for something else, you can use it too, the tools is pretty much "the source speaks for itself". Please give feedback if you have a new test-case with your example data to force a response.
+Test-UDP has a predefined -Service option for DNS, SNMP, NTP and Kerberos, sending meaningful request data to get an actual response. If no option given it tests google DNS. If you have a test case for something else, you can use it too, the tools is pretty much "the source speaks for itself". Please give feedback if you have a new test-case with your example data to force a response.
 
 ![grafik](https://github.com/user-attachments/assets/996d8103-7595-4a1e-9d5b-cc66a0cc0fdf)
 
