@@ -1,7 +1,9 @@
 # Creates 2024/2025 'cause I needed them.
 # Test-Netconnection is too slow since it test way more than I needed and is way more patient that I needed.
 # On top there is no UDP Ping.
-# 2025-04 v0 Joachim Otahal, first upload to github April 2025
+# 2025-04 v0   Joachim Otahal, first upload to github April 2025
+#         v0.1 Fixed minor stupid bugs in Test-UDP -Port, differentiate between full retry and rechecking for received data.
+#              Added a few empty testcases until I have an successful test.
 # https://github.com/Joachim-Otahal/PowerShell
 # https://joumxyzptlk.de/
 
@@ -39,7 +41,7 @@ function Test-UDP {
     # Info: To get an "UDP answer" you have to send something where the other side actually responds.
     # Verbose is always on because I say so.
     #
-    # Predefined Services are: DNS, NTP, Kerberosn SNMP. Did not need more yet, and WireGuard test did not work.
+    # Predefined Services are: DNS, NTP, Kerberos, SNMP. Did not need more yet, and WireGuard test did not work.
     # By default test google DNS reachable, send once, wait for response by default 1 second in 100 ms increments, gives status every 100 ms.
     # Output is the UDP response, or $null of there is none or quick-abort (latter = kerberos).
 
@@ -47,10 +49,11 @@ function Test-UDP {
     param (
         [string]$Computer = "8.8.8.8",
         [int]$LocalPort = $(Get-Random -Minimum 10000 -Maximum 20000),
-        [ValidateSet("DNS", "NTP", "SNMP", "Kerberos")][string]$Service = "DNS",
+        [ValidateSet("DNS", "Kerberos", "NTP", "RDP", "SNMP")][string]$Service = "DNS",
         [int]$Port = 53,
         [int]$TimeoutInMs = 100,
-        [int]$Retry = 10,
+        [int]$Recheck = 10,
+        [int]$Retry = 0,
         # Default Testdata. Kerberos makes Quick-Abort, DNS Port 53 does respond with something :D, others ignore.
         [byte[]]$UDPData = [byte[]]@(1,2,3,4,5,6,7,8,9,10)
     )
@@ -58,20 +61,34 @@ function Test-UDP {
     if (@(53,88,123,161) -notcontains $Port) {
         Write-Verbose "`n#########`nYOU HAVE A NEW TEST CASE! If it works, please be so kind send info to https://github.com/Joachim-Otahal/PowerShell.`n##########" -Verbose
     }
-    Write-Verbose "Using local source port $LocalPort, destiantion $($Computer):$Port" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
+    Write-Verbose "Using local source port $LocalPort, destination $($Computer):$Port" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
 
     # https://wiki.wireshark.org/SampleCaptures
-    switch ($Service) {
-        # This is an DNS query for pool.ntp.org
-        "DNS"  {$Port =  53 ; $UDPData = [byte[]]@("0x00","0x2b","0x01","0x00","0x00","0x01","0x00","0x00","0x00","0x00","0x00","0x00","0x04","0x70","0x6f","0x6f","0x6c","0x03","0x6e","0x74","0x70","0x03","0x6f","0x72","0x67","0x00","0x00","0x01","0x00","0x01")}
-        # This is an ntp request packet, https://wiki.wireshark.org/NTP
-        "NTP"  {$Port = 123 ; $UDPData = [byte[]]@("0xd9","0x00","0x0a","0xfa","0x00","0x00","0x00","0x00","0x00","0x01","0x02","0x90","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0xc5","0x02","0x04","0xec","0xec","0x42","0xee","0x92")}
-        # This is an SNMP dummy request on "public" community, Source https://wiki.wireshark.org/SNMP
-        "SNMP" {$Port = 161 ; $UDPData = [byte[]]@("0x30","0x26","0x02","0x01","0x00","0x04","0x06","0x70","0x75","0x62","0x6c","0x69","0x63","0xa0","0x19","0x02","0x01","0x26","0x02","0x01","0x00","0x02","0x01","0x00","0x30","0x0e","0x30","0x0c","0x06","0x08","0x2b","0x06","0x01","0x02","0x01","0x01","0x02","0x00","0x05","0x00")}
-        # For Kerberos this dummy data is enough for testing in my experience.
-        "Kerberos" {$Port = 88 ; $UDPData = [byte[]]@(1,2,3,4,5,6,7,8,9,10)}
-        # This is WireGuard dummy request, https://wiki.wireshark.org/WireGuard. Did not work in test though, therefore commented out.
-        # $UDPData = [byte[]]@("0x01","0x00","0x00","0x00","0x02","0x9c","0x03","0xc1","0xf3","0x0c","0xeb","0x67","0x14","0x8d","0xd2","0x7c","0x78","0xd5","0x2d","0x01","0x96","0xb6","0xb7","0x8b","0x71","0x54","0x29","0x86","0xf5","0x63","0xac","0x89","0x88","0x79","0x35","0x3f","0x02","0x2f","0x17","0x47","0x70","0xc5","0xb3","0xd4","0x33","0xcf","0xb4","0x9f","0xd3","0x31","0x16","0x88","0x28","0x4c","0xe6","0x7e","0xc7","0x21","0x11","0xe6","0x55","0x12","0x9f","0xc5","0xf6","0xbe","0xd2","0xe0","0xa4","0x4b","0x8d","0x28","0xc2","0x22","0xc6","0xe1","0x47","0x9a","0x08","0x33","0xc7","0xa1","0xf6","0x41","0x7b","0x73","0x3c","0x1e","0xf0","0x49","0xfa","0xb5","0xe4","0x51","0xaf","0xf5","0x61","0xea","0x42","0x8c","0x21","0x16","0xf7","0xd1","0x02","0x3c","0xcd","0xac","0x2b","0x2a","0x00","0xec","0xbe","0x02","0x73","0xc9","0xf8","0x4b","0x1c","0x69","0x50","0x32","0x08","0x4b","0x58","0xe7","0xd2","0xff","0x9f","0xcf","0x19","0xfd","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00")
+    if ($Port -eq 53) {
+        switch ($Service) {
+            # This is an DNS query for pool.ntp.org
+            "DNS"  {$Port =  53 ; $UDPData = [byte[]]@("0x00","0x2b","0x01","0x00","0x00","0x01","0x00","0x00","0x00","0x00","0x00","0x00","0x04","0x70","0x6f","0x6f","0x6c","0x03","0x6e","0x74","0x70","0x03","0x6f","0x72","0x67","0x00","0x00","0x01","0x00","0x01")}
+            # # For ISAKMP / IPSec no test case yet
+            # "ISAKMP" {$Port = 500 ; $UDPData = [byte[]]@(1,2,3,4,5,6,7,8,9,10)}
+            # For Kerberos this dummy data is enough for testing in my experience.
+            "Kerberos" {$Port = 88 ; $UDPData = [byte[]]@(1,2,3,4,5,6,7,8,9,10)}
+            # # For LDAP no test case yet.
+            # "LDAP" {$Port = 389 ; $UDPData = [byte[]]@(1,2,3,4,5,6,7,8,9,10)}
+            # # For LDAPS no test case yet
+            # "LDAPS" {$Port = 636 ; $UDPData = [byte[]]@(1,2,3,4,5,6,7,8,9,10)}
+            # # For NAT-T / IPSec no test case yet
+            # "NAT-T" {$Port = 4500 ; $UDPData = [byte[]]@(1,2,3,4,5,6,7,8,9,10)}
+            # This is an ntp request packet, https://wiki.wireshark.org/NTP
+            "NTP"  {$Port = 123 ; $UDPData = [byte[]]@("0xd9","0x00","0x0a","0xfa","0x00","0x00","0x00","0x00","0x00","0x01","0x02","0x90","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0xc5","0x02","0x04","0xec","0xec","0x42","0xee","0x92")}
+            # # For OpenVPN no test case yet
+            # "OpenVPN" {$Port = 1194 ; $UDPData = [byte[]]@(1,2,3,4,5,6,7,8,9,10)}
+            # # For RDP no test case yet
+            # "RDP" {$Port = 3389 ; $UDPData = [byte[]]@(1,2,3,4,5,6,7,8,9,10)}
+            # This is an SNMP dummy request on "public" community, Source https://wiki.wireshark.org/SNMP
+            "SNMP" {$Port = 161 ; $UDPData = [byte[]]@("0x30","0x26","0x02","0x01","0x00","0x04","0x06","0x70","0x75","0x62","0x6c","0x69","0x63","0xa0","0x19","0x02","0x01","0x26","0x02","0x01","0x00","0x02","0x01","0x00","0x30","0x0e","0x30","0x0c","0x06","0x08","0x2b","0x06","0x01","0x02","0x01","0x01","0x02","0x00","0x05","0x00")}
+            # This is WireGuard dummy request, https://wiki.wireshark.org/WireGuard. Did not work in test though, therefore commented out.
+            # $UDPData = [byte[]]@("0x01","0x00","0x00","0x00","0x02","0x9c","0x03","0xc1","0xf3","0x0c","0xeb","0x67","0x14","0x8d","0xd2","0x7c","0x78","0xd5","0x2d","0x01","0x96","0xb6","0xb7","0x8b","0x71","0x54","0x29","0x86","0xf5","0x63","0xac","0x89","0x88","0x79","0x35","0x3f","0x02","0x2f","0x17","0x47","0x70","0xc5","0xb3","0xd4","0x33","0xcf","0xb4","0x9f","0xd3","0x31","0x16","0x88","0x28","0x4c","0xe6","0x7e","0xc7","0x21","0x11","0xe6","0x55","0x12","0x9f","0xc5","0xf6","0xbe","0xd2","0xe0","0xa4","0x4b","0x8d","0x28","0xc2","0x22","0xc6","0xe1","0x47","0x9a","0x08","0x33","0xc7","0xa1","0xf6","0x41","0x7b","0x73","0x3c","0x1e","0xf0","0x49","0xfa","0xb5","0xe4","0x51","0xaf","0xf5","0x61","0xea","0x42","0x8c","0x21","0x16","0xf7","0xd1","0x02","0x3c","0xcd","0xac","0x2b","0x2a","0x00","0xec","0xbe","0x02","0x73","0xc9","0xf8","0x4b","0x1c","0x69","0x50","0x32","0x08","0x4b","0x58","0xe7","0xd2","0xff","0x9f","0xcf","0x19","0xfd","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00","0x00")
+        }
     }
 
     # # Kerberos Port 88 UDP, https://wiki.wireshark.org/SampleCaptures#kerberos-and-keytab-file-for-decryption
@@ -98,30 +115,41 @@ function Test-UDP {
     # $UDPData += [byte[]]@("0x30","0x1b","0x30","0x19","0xa0","0x03","0x02","0x01","0x14","0xa1","0x12","0x04","0x10","0x58","0x50","0x31")
     # $UDPData += [byte[]]@("0x20","0x20","0x20","0x20","0x20","0x20","0x20","0x20","0x20","0x20","0x20","0x20","0x20")
 
-    $UDPClient = [System.Net.Sockets.UdpClient]::new($LocalPort)
-
-    $UDPClient.Connect($Computer,$Port)
-    # only needed is receive is not async, but no real world case found yet, so not implemented and commented out.
-    # $RemoteEndpoint = New-Object system.net.ipendpoint([system.net.ipaddress]::Any,$LocalPort)
-    # $UDPReceivedData = $UDPClient.Receive($RemoteEndpoint)
-    $UDPReceive = $UDPClient.ReceiveAsync()
-    [void]$UDPClient.Send($UDPData,$UDPData.length)
-    for ($i=0;$i -lt $Retry;$i++) {
-        Write-Verbose "$i, $($i*$TimeoutInMs) ms, $($UDPReceive.Status.ToString())" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
-        if ($UDPReceive.Status.ToString() -ne "WaitingForActivation") { $loopcount = $i; $i = [int]::MaxValue }
-        Start-Sleep -Milliseconds $TimeoutInMs
-    }
-    if ($UDPReceive.Status.ToString() -eq "RanToCompletion") {
-        Write-Verbose "$($UDPReceive.Status.ToString())" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
-        $UDPReceivedData = $UDPReceive.Result
-    } else {
-        if ($loopcount -eq 0) {
-            Write-Verbose "Quick abort from target, possibly working connection but rejected." -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
+    for ($r=0;$r -le $Retry;$r++) {
+        if ($r -gt 0) {
+            Write-Verbose "Retry $r" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
         }
-        Write-Verbose "No-Data received" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
-        $UDPReceivedData = $null
+        $UDPClient = [System.Net.Sockets.UdpClient]::new($LocalPort)
+
+        $UDPClient.Connect($Computer,$Port)
+        # only needed is receive is not async, but no real world case found yet, so not implemented and commented out.
+        # $RemoteEndpoint = New-Object system.net.ipendpoint([system.net.ipaddress]::Any,$LocalPort)
+        # $UDPReceivedData = $UDPClient.Receive($RemoteEndpoint)
+        $UDPReceive = $UDPClient.ReceiveAsync()
+        [void]$UDPClient.Send($UDPData,$UDPData.length)
+        for ($i=0;$i -lt $Recheck;$i++) {
+            Write-Verbose "$i, $($i*$TimeoutInMs) ms, $($UDPReceive.Status.ToString())" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
+            if ($UDPReceive.Status.ToString() -ne "WaitingForActivation") { $loopcount = $i; $i = [int]::MaxValue }
+            Start-Sleep -Milliseconds $TimeoutInMs
+        }
+        if ($UDPReceive.Status.ToString() -eq "RanToCompletion") {
+            Write-Verbose "$($UDPReceive.Status.ToString())" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
+            $UDPReceivedData = $UDPReceive.Result
+        } else {
+            if ($loopcount -eq 0) {
+                Write-Verbose "Quick abort from target, possibly working connection but rejected." -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
+            }
+            Write-Verbose "No-Data received" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
+            $UDPReceivedData = $null
+        }
+        $UDPClient.Close()
+        if ($UDPReceivedData -ne $null) {
+            $r = [int]::MaxValue
+        }
     }
-    $UDPClient.Close()
+    if ($UDPReceivedData -eq $null) {
+        Write-Verbose "No-Data received - Recommending higher -TimeoutInMs, -Recheck or -Retry" -Verbose #:($PSBoundParameters['Verbose'] -eq $true)
+    }
     $UDPReceivedData
 }
 
