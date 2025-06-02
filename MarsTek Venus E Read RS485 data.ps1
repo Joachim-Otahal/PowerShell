@@ -1,9 +1,8 @@
 ﻿# Read MARSTEK VENUS E via Powershell and RS485 USB adapter.
-# I simply don't like relying on cloud, and I want it faster than every five Minutes.
+# I simply don't like relying on cloud.
 # Joachim Otahal June 2025
-# little update June 2025, correct interpretation of the data from Growatt MIC TX-L.
 #
-# This is weird, no real documentation or working example on how to send and receive binary data via powershell? OK, worked my way through :D.
+# This is weird, no real documentation or working example on how to send and receive serial binary data via powershell? OK, worked my way through :D.
 # And the documentation from growatt is somewhat non existing too, I had to capture the serial communication from Shinebus to know what is real.
 # Even worse: Register-ObjectEvent works in PSIE and manually in shell, but NOT when used in script. Most weird powershell bug so far.
 
@@ -181,7 +180,7 @@ $SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 
 
 if ($SerialData) {
     $MarstekState.BatteryVoltage = ($SerialData[3] * 256 + $SerialData[4])/100
-    $MarstekState.BatteryCurrent = ($SerialData[5] * 256 + $SerialData[6])/100
+    $MarstekState.BatteryCurrent = ($SerialData[5] * 256 + $SerialData[6])/10000
     # Following is singed int32, therefore roundabout hex since I am too lazy. bigint has the advantage to understan s32 and s16.
     $MarstekState.BatteryPower = [bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2") + $SerialData[9].ToString("x2") + $SerialData[10].ToString("x2"), 'AllowHexSpecifier')
     $MarstekState.BatterySOC = $SerialData[11] * 256 + $SerialData[12]
