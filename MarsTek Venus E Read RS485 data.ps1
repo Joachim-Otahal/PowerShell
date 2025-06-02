@@ -2,6 +2,8 @@
 # I simply don't like relying on cloud.
 # Joachim Otahal June 2025
 #
+# Modbus Info: https://duravolt.nl/wp-content/uploads/Duravolt-Plug-in-Battery-Modbus.pdf
+#
 # This is weird, no real documentation or working example on how to send and receive serial binary data via powershell? OK, worked my way through :D.
 # And the documentation from growatt is somewhat non existing too, I had to capture the serial communication from Shinebus to know what is real.
 # Even worse: Register-ObjectEvent works in PSIE and manually in shell, but NOT when used in script. Most weird powershell bug so far.
