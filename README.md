@@ -33,6 +33,7 @@ Read Marstek Venus E Data via RS485-2-USB adapter with powershell and get the us
 A big THANK YOU to Duravolt ! https://duravolt.nl/wp-content/uploads/Duravolt-Plug-in-Battery-Modbus.pdf
 
 ![image](https://github.com/user-attachments/assets/c2a51937-2865-4633-ad3c-d4ff62e3ebf7)
+![IMG_20250602_160521_1 RS485 2 USB](https://github.com/user-attachments/assets/22e52db1-64ec-4df6-89e0-53f7491d67cb)
 
 ## NTLMv1 SMB1 detailed audit and logging.ps1
 This activates detailled SMB1 and NTLM auditing/logging AND analyzes the eventlogs with appriopriate methods to get what needed. Requires at least Server 2012 with Powershell 5.1 and current updates.
