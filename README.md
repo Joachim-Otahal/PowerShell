@@ -28,6 +28,11 @@ Actually WORKING example how to send and receive from serial port with Powershel
 
 Rant: A lot of serial port examples on the internet are half, and Register-ObjectEvent works in PSIE and manually in shell, but NOT when used in script (most weird powershell bug so far). It is like those people never actually tried to implement it.
 
+## MarsTek Venus E Read RS485 data.ps1 ##
+Read Marstek Venus E Data via RS485-2-USB adapter with powershell and get the useful information out of it. Easy to expand.
+
+![image](https://github.com/user-attachments/assets/8d3a05b0-0cf3-4c04-8dc3-60045a0c4c14)
+
 ## NTLMv1 SMB1 detailed audit and logging.ps1
 This activates detailled SMB1 and NTLM auditing/logging AND analyzes the eventlogs with appriopriate methods to get what needed. Requires at least Server 2012 with Powershell 5.1 and current updates.
 On subsequent runs it only analyzes the event logs when auditing/logging. Reports saved as .CSV on Desktop. Default delimiter is ";" for Germany, edit the script if you need it different.
