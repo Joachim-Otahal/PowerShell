@@ -30,6 +30,7 @@ Rant: A lot of serial port examples on the internet are half, and Register-Objec
 
 ## MarsTek Venus E Read RS485 data.ps1 ##
 Read Marstek Venus E Data via RS485-2-USB adapter with powershell and get the useful information out of it. Easy to expand.
+A big THANK YOU to Duravolt ! https://duravolt.nl/wp-content/uploads/Duravolt-Plug-in-Battery-Modbus.pdf
 
 ![image](https://github.com/user-attachments/assets/8d3a05b0-0cf3-4c04-8dc3-60045a0c4c14)
 
