@@ -32,7 +32,7 @@ Rant: A lot of serial port examples on the internet are half, and Register-Objec
 Read Marstek Venus E Data via RS485-2-USB adapter with powershell and get the useful information out of it. Easy to expand.
 A big THANK YOU to Duravolt ! https://duravolt.nl/wp-content/uploads/Duravolt-Plug-in-Battery-Modbus.pdf
 
-![image](https://github.com/user-attachments/assets/8d3a05b0-0cf3-4c04-8dc3-60045a0c4c14)
+![image](https://github.com/user-attachments/assets/c2a51937-2865-4633-ad3c-d4ff62e3ebf7)
 
 ## NTLMv1 SMB1 detailed audit and logging.ps1
 This activates detailled SMB1 and NTLM auditing/logging AND analyzes the eventlogs with appriopriate methods to get what needed. Requires at least Server 2012 with Powershell 5.1 and current updates.
