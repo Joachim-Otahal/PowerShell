@@ -32,7 +32,7 @@ Rant: A lot of serial port examples on the internet are half, and Register-Objec
 Read Marstek Venus E Data via RS485-2-USB adapter with powershell and get the useful information out of it. Easy to expand.
 A big THANK YOU to Duravolt ! https://duravolt.nl/wp-content/uploads/Duravolt-Plug-in-Battery-Modbus.pdf
 
-UPDATE two days later: Internet was disconnected for five minutes, router reboot, and that Marstek Venus E lost all its config, no more connected to WLAN, cannot see Shelly 3 EM pro any more. So I had to add the control how much to charge from grid or pump into the grid in my control script RIGHT ABOUT NOW. The examples in the powershell script here now includs controlling that. Did not expect this to be needed so soon.
+UPDATE two days later: Internet was disconnected for five minutes, router reboot, and that Marstek Venus E lost all its config, no more connected to WLAN, cannot see Shelly 3 EM pro any more. So I had to add the control how much to charge from grid or pump into the grid in my control script RIGHT ABOUT NOW. The examples in the powershell script here now include controlling that. Did not expect this to be needed so soon.
 
 ![image](https://github.com/user-attachments/assets/c2a51937-2865-4633-ad3c-d4ff62e3ebf7)
 ![IMG_20250602_160521_1 RS485 2 USB](https://github.com/user-attachments/assets/22e52db1-64ec-4df6-89e0-53f7491d67cb)
