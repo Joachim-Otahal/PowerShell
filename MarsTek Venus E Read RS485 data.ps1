@@ -174,19 +174,18 @@ $MarstekState = [pscustomobject]@{
     Temp = 0
     TempMOS1 = 0
     TempMOS2 = 0
-    InterterState = 0
-    InterterStateHR = ""
+    InverterState = 0
+    InverterStateHR = ""
 }
 
 # Battery data
 [byte[]]$GetMarstekStatus=(0x01,0x03,0x7d,0x64,0x00,0x06) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
 $SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 -Command $GetMarstekStatus
-
 if ($SerialData) {
     $MarstekState.BatteryVoltage = ($SerialData[3] * 256 + $SerialData[4])/100
     $MarstekState.BatteryCurrent = ($SerialData[5] * 256 + $SerialData[6])/10000
     # Following is singed int32, therefore roundabout hex since I am too lazy. bigint has the advantage to understan s32 and s16.
-    $MarstekState.BatteryPower = [bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2") + $SerialData[9].ToString("x2") + $SerialData[10].ToString("x2"), 'AllowHexSpecifier')
+    $MarstekState.BatteryPower = [int]([bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2") + $SerialData[9].ToString("x2") + $SerialData[10].ToString("x2"), 'AllowHexSpecifier'))
     $MarstekState.BatterySOC = $SerialData[11] * 256 + $SerialData[12]
     $MarstekState.BatteryTotalEnergy = ($SerialData[13] * 256 + $SerialData[14])/1000
 }
@@ -194,29 +193,26 @@ if ($SerialData) {
 # Grid data
 [byte[]]$GetMarstekStatus=(0x01,0x03,0x7d,0xc8,0x00,0x05) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
 $SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 -Command $GetMarstekStatus
-
 if ($SerialData) {
     $MarstekState.ACVoltage = ($SerialData[3] * 256 + $SerialData[4])/10
     $MarstekState.ACCurrent = ($SerialData[5] * 256 + $SerialData[6])/100
-    $MarstekState.ACPower = [bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2") + $SerialData[9].ToString("x2") + $SerialData[10].ToString("x2"), 'AllowHexSpecifier')
+    $MarstekState.ACPower = [int]([bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2") + $SerialData[9].ToString("x2") + $SerialData[10].ToString("x2"), 'AllowHexSpecifier'))
     $MarstekState.ACFrequency = ($SerialData[11] * 256 + $SerialData[12])/100
 }
 
 # Offgrid plug data
 [byte[]]$GetMarstekStatus=(0x01,0x03,0x7e,0x2c,0x00,0x04) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
 $SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 -Command $GetMarstekStatus
-
 if ($SerialData) {
     $MarstekState.ACOVoltage = ($SerialData[3] * 256 + $SerialData[4])/10
     $MarstekState.ACOCurrent = ($SerialData[5] * 256 + $SerialData[6])/100
     # Following is singed int32, therefore roundabout hex since I am too lazy.
-    $MarstekState.ACOPower = [bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2") + $SerialData[9].ToString("x2") + $SerialData[10].ToString("x2"), 'AllowHexSpecifier')
+    $MarstekState.ACOPower = [int]([bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2") + $SerialData[9].ToString("x2") + $SerialData[10].ToString("x2"), 'AllowHexSpecifier'))
 }
 
 # Temperature data
 [byte[]]$GetMarstekStatus=(0x01,0x03,0x88,0xb8,0x00,0x03) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
 $SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 -Command $GetMarstekStatus
-
 if ($SerialData) {
     $MarstekState.Temp = [bigint]::Parse($SerialData[3].ToString("x2") + $SerialData[4].ToString("x2"), 'AllowHexSpecifier')/10
     $MarstekState.TempMOS1 = [bigint]::Parse($SerialData[5].ToString("x2") + $SerialData[6].ToString("x2"), 'AllowHexSpecifier')/10
@@ -227,17 +223,16 @@ if ($SerialData) {
 # Inverter State
 [byte[]]$GetMarstekStatus=(0x01,0x03,0x89,0x1c,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
 $SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 -Command $GetMarstekStatus
-
 if ($SerialData) {
-    $MarstekState.InterterState = $SerialData[3]
+    $MarstekState.InverterState = $SerialData[3]
     switch ($SerialData[3]) {
-        0 {$MarstekState.InterterStateHR="sleep"}
-        1 {$MarstekState.InterterStateHR="standby"}
-        2 {$MarstekState.InterterStateHR="charge"}
-        3 {$MarstekState.InterterStateHR="discharge"}
-        4 {$MarstekState.InterterStateHR="backup mode"}
-        5 {$MarstekState.InterterStateHR="OTA upgrade"}
-        default {$MarstekState.InterterStateHR="illegal value"}
+        0 {$MarstekState.InverterStateHR="sleep"}
+        1 {$MarstekState.InverterStateHR="standby"}
+        2 {$MarstekState.InverterStateHR="charge"}
+        3 {$MarstekState.InverterStateHR="discharge"}
+        4 {$MarstekState.InverterStateHR="backup mode"}
+        5 {$MarstekState.InverterStateHR="OTA upgrade"}
+        default {$MarstekState.InverterStateHR="illegal value"}
     }
 }
 
@@ -246,7 +241,7 @@ $MarstekState
 $null = Read-Host "From here on it takes care about SETTING the charge / discharge. Enter to continue, or CTRL+C to stop"
 
 # RS485 Mode SET and then check
-# Check whether Marstek is in maxual RS485 control. If not: Activate it.
+# Check whether Marstek is in manual RS485 control. If not: Activate it.
 [byte[]]$GetMarstekStatus=(0x01,0x03,0xa4,0x10,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
 $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
 [System.BitConverter]::ToString($SerialData)
