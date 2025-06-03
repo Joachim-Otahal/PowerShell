@@ -44,7 +44,7 @@ On subsequent runs it only analyzes the event logs when auditing/logging. Report
 Task scheduler -> import. For a daily report, expecially on busy domain controllers where the security log does not span several weeks.
 
 ## Test-Ping-ps1
-This is a ping in pure powershell. I needed something "faster than Test-Netconnection". It sends, by default, four pings withing 800 ms, really only pings, and then gives up. You can change the TTL, Timeout and Retry settings with -TTL -TimeOut and -Retry.
+This is a ping in pure powershell. I needed something "faster than Test-Netconnection". It sends, by default, four pings within 800 ms, really only pings, and then gives up. You can change the TTL, Timeout and Retry settings with -TTL -TimeOut and -Retry.
 
 ## Test-TCP and Test-UDP faster.ps1
 UDP Ping and TCP ping. There is no non-problematic windows UDP Ping tool out there which is not flagged by AVs since those old tools are not bug free. Default Test-Netconnection is way too slow to be useful in some situations, therefore Test-TCP, and does no UDP testing, therefore Test-UDP.
