@@ -140,12 +140,14 @@ function Get-CRC16Modbus {
 # MARSTEK
 # Bus 1, function 3, start at 0x7918, read 2
 # Device name
-[byte[]]$GetMarstekStatus=(0x01,0x03,0x79,0x18,0x00,0x0a) #
+[byte[]]$GetMarstekStatus=(0x01,0x03,0x79,0x18,0x00,0x0a) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
 # Softwareversion
 # Serialnumer
-[byte[]]$GetMarstekStatus=(0x01,0x03,0x79,0xE0,0x00,0x0a) #
+[byte[]]$GetMarstekStatus=(0x01,0x03,0x79,0xE0,0x00,0x0a) : $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
 
-if ($GetMarstekStatus.Count -eq 6) {$GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus } # -Output HexLE
+# RS485 Mode check
+[byte[]]$GetMarstekStatus=(0x01,0x03,0xa4,0x10,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+
 $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
 [System.BitConverter]::ToString($SerialData)
 ([System.Text.Encoding]::ASCII).GetString($SerialData)
@@ -240,3 +242,66 @@ if ($SerialData) {
 }
 
 $MarstekState
+
+$null = Read-Host "From here on it takes care about SETTING the charge / discharge. Enter to continue, or CTRL+C to stop"
+
+# RS485 Mode SET and then check
+# Check whether Marstek is in maxual RS485 control. If not: Activate it.
+[byte[]]$GetMarstekStatus=(0x01,0x03,0xa4,0x10,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+$SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+[System.BitConverter]::ToString($SerialData)
+if ($SerialData[3] -ne 85 -or $SerialData[4] -ne 170) {
+    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x10,0x55,0xAA) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+    [System.BitConverter]::ToString($SerialData)
+}
+[byte[]]$GetMarstekStatus=(0x01,0x03,0xa4,0x10,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+$SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+[System.BitConverter]::ToString($SerialData)
+
+# Set carge / discharge power, feed to grid
+$ACPower = 145 # Positive = Feed to grid, negative 0 charge.
+if ($ACPower -eq 0) {
+    # Mode force change stop
+    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x1A,0x00,0x00) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+    # Set force charge to zero
+    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x24,0,0) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+    # Set force discharge
+    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x25,0,0) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+}
+if ($ACPower -gt 0) { # Feed to grid
+    $ACPowerHigh = [Byte]([Math]::Floor(([math]::abs($ACPower)+1)/256))
+    $ACPowerLow = [Byte](([math]::abs($ACPower)+1)%256)
+    # Set force charge to zero
+    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x24,0x00,0x00) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+    # Set force discharge to value
+    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x25,$ACPowerHigh,$ACPowerLow) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+    # Mode force change discharge
+    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x1A,0x00,0x02) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+    # ^^^ WORKED!
+}
+if ($ACPower -lt 0) { # Feed the battery
+    $ACPowerHigh = [Byte]([Math]::Floor(([math]::abs($ACPower)+1)/256))
+    $ACPowerLow = [Byte](([math]::abs($ACPower)+1)%256)
+    # Set force discharge to zero
+    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x25,0x00,0x00) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+    # Set force charge to value
+    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x24,$ACPowerHigh,$ACPowerLow) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+    # Mode force change charge
+    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x1A,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+    # ^^^ WORKED!
+}
+
+# reboot - commented out ;D.
+[byte[]]$GetMarstekStatus=(0x01,0x06,0xa0,0x28,0x55,0xAA) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+#$SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+#[System.BitConverter]::ToString($SerialData)
