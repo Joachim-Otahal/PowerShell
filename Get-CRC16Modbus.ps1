@@ -10,7 +10,7 @@
     # So I translated this linux C version from https://github.com/LacobusVentura/MODBUS-CRC16
     # to powershell, and finally I had a working CRC16/MODBUS
     #
-    # Accepts hex string in various formats, byte or byte-array, int23 or int32 array.
+    # Accepts hex string in various formats, byte or byte-array, int32 or int32 array.
     # Joachim Otahal August 2024
 
     $CRCTable = 0x0000, 0xc0c1, 0xc181, 0x0140, 0xc301, 0x03c0, 0x0280, 0xc241, 

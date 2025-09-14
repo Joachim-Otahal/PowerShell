@@ -1,6 +1,7 @@
 ﻿# Read MARSTEK VENUS E via Powershell and RS485 USB adapter.
 # I simply don't like relying on cloud.
 # Joachim Otahal June 2025
+#                September 2025 updated to read more values, and use newer read-serial version with "burst command per connection"
 #
 # Modbus Info: https://duravolt.nl/wp-content/uploads/Duravolt-Plug-in-Battery-Modbus.pdf
 #
@@ -13,33 +14,83 @@ function Read-Serial {
         [string]$COM = "COM3",
         [int]$Timeout = 2,
         [int]$Speed = 9600,
-        [Byte[]]$Command = $null,
+        [Object]$Commandos = $null,
+        #[Byte[]]$Command = $null, # old version, where we did not allow hashtable with several [byte[]] arrays.
         [int]$ResponseWait = 250
     )
-    if ($Command.Count -eq 0) {
+    # Joachim Otahal, 2025
+    # v2, allowing multiple command within one serial connection supplied as hash-array. Avoids the DOTNET issue where consequtively
+    # opening a closing a port several times does not work as expected. The commands are done in alphabetical order.
+    # v3, updates for more tolerance to hash-array names.
+    # https://learn.microsoft.com/en-us/answers/questions/343511/serial-port-unauthorizedaccessexception
+    # Please remember that the SerialPort.Close method takes some time to actually close the port.
+    $Keys=$null
+    if ($Commandos.psobject.TypeNames -contains "System.Object[]") {
+        $Commandos=[byte[]]$Commandos # Catches when adding crc16 changes byte array to object array for no reason, and not always?
+    }
+    if ($Commandos.psobject.TypeNames -contains "System.Collections.Hashtable") {
+        $Keys = @($Commandos.Keys | Sort-Object)
+        $KeyIndex=0
+        if ($Commandos[$Keys[$KeyIndex]].psobject.TypeNames -contains "System.Byte[]") {
+            $ReceiveDataHash=@{}
+        } else {
+            return $null
+        }
+    }
+    if ($Commandos.psobject.TypeNames -notcontains "System.Byte[]" -and $Commandos.psobject.TypeNames -notcontains "System.Collections.Hashtable") {
         return $null
-    } else {
-        $port = New-Object System.IO.Ports.SerialPort $COM,$Speed,None,8,one
-        $port.Open()
-        $port.Write($Command,0,$Command.Count)
-        # Response is not fast, but wait no more than $Timeout seconds
-        for ($i=0;$i -lt $Timeout*1000/$ResponseWait;$i++) {
-            Start-Sleep -Milliseconds $ResponseWait
-            if ($port.BytesToRead -gt 0) {
-                #Write-Verbose $i -Verbose
-                $ReceiveData=@()
-                while ($port.BytesToRead -gt 0) {
-                   $ReceiveData += [byte]$port.ReadByte()
+    }
+    $port = New-Object System.IO.Ports.SerialPort $COM,$Speed,None,8,one
+    if ($port.IsOpen) {
+        $port.Close()
+        $MaxTry=20
+        while ($Port.IsOpen -and $MaxTry -gt 0) { Start-Sleep -Milliseconds 25;$MaxTry-- } # yeah dotnet serial is strangly slow...
+    }
+    if (!$port.IsOpen) {
+        $MaxTry=20
+        while (!$Port.IsOpen -and $MaxTry -gt 0) {
+            try { $port.Open() } catch { $error.RemoveAt(0) }
+            Start-Sleep -Milliseconds 25;$MaxTry--
+        } # yeah dotnet serial is strangly slow...
+        if ($Port.IsOpen) {$Sending=$true}else{$Sending=$false} # Control whether there are still elements in hasharray...
+        while ($Sending) {
+            if ($Keys.Count -gt 0) {
+                $Command = $Commandos[$Keys[$KeyIndex]]
+            } else {
+                $Command = $Commandos
+                $Sending = $false
+            }
+            $port.Write($Command,0,$Command.Count)
+            # Response is not fast, but wait no more than $Timeout seconds
+            for ($i=0;$i -lt $Timeout*1000/$ResponseWait;$i++) {
+                Start-Sleep -Milliseconds $ResponseWait
+                if ($port.BytesToRead -gt 0) {
+                    # Write-Verbose $i -Verbose
+                    $ReceiveData=@()
+                    while ($port.BytesToRead -gt 0) {
+                       $ReceiveData += [byte]$port.ReadByte()
+                    }
+                    $i=[int]::MaxValue
                 }
-                $i=[int]::MaxValue
+            }
+            if ($Keys.Count -gt 0) { # If input is hasharray of [byte[]]
+                $ReceiveDataHash[$Keys[$Keyindex]] = $ReceiveData # Add received to return-hasharray
+                $KeyIndex++ # next element please...
+                if ($KeyIndex -ge $Keys.Count) {
+                    $Sending=$false
+                } else {
+                    Start-Sleep -Milliseconds $ResponseWait # Might be not needed, just paranoid...
+                }
             }
         }
         $port.Close()
-        if ($ReceiveData.Count -eq 0) {
-            return $null
+        if ($Keys.Count -gt 0) {
+            return $ReceiveDataHash
         } else {
             return $ReceiveData
         }
+    } else {
+        return $null
     }
 }
 
@@ -55,7 +106,7 @@ function Get-CRC16Modbus {
     # So I translated this linux C version from https://github.com/LacobusVentura/MODBUS-CRC16
     # to powershell, and finally I had a working CRC16/MODBUS
     #
-    # Accepts hex string in various formats, byte or byte-array, int23 or int32 array.
+    # Accepts hex string in various formats, byte or byte-array, int32 or int32 array.
     # Joachim Otahal August 2024
 
     $CRCTable = 0x0000, 0xc0c1, 0xc181, 0x0140, 0xc301, 0x03c0, 0x0280, 0xc241, 
@@ -140,15 +191,15 @@ function Get-CRC16Modbus {
 # MARSTEK
 # Bus 1, function 3, start at 0x7918, read 2
 # Device name
-[byte[]]$GetMarstekStatus=(0x01,0x03,0x79,0x18,0x00,0x0a) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+[byte[]]$SerialCommand=(0x01,0x03,0x79,0x18,0x00,0x0a) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
 # Softwareversion
 # Serialnumer
-[byte[]]$GetMarstekStatus=(0x01,0x03,0x79,0xE0,0x00,0x0a) : $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+[byte[]]$SerialCommand=(0x01,0x03,0x79,0xE0,0x00,0x0a) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
 
 # RS485 Mode check
-[byte[]]$GetMarstekStatus=(0x01,0x03,0xa4,0x10,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
+[byte[]]$SerialCommand=(0x01,0x03,0xa4,0x10,0x00,0x01) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
 
-$SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+$SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $SerialCommand
 [System.BitConverter]::ToString($SerialData)
 ([System.Text.Encoding]::ASCII).GetString($SerialData)
 
@@ -156,17 +207,21 @@ $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 
 
 # Get Marstek Data
 $TimeStamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
-$MarstekState = [pscustomobject]@{
-    Time = $TimeStamp
+# Marstek / Duravolt Data.
+$MarstekData = [pscustomobject]@{
+    Time = "1601-01-01 00:00:00"
     BatteryVoltage = [float]0
     BatteryCurrent = [float]0
     # Following is singed int32, therefore roundabout hex since I am too lazy.
     BatteryPower = 0
     BatterySOC = 0
     BatteryTotalEnergy = [float]0
+    BatteryCharge = 0 # What is set as charge / discharge
+    BatteryDischarge = 0 # What is set as charge / discharge
+    BatteryMode = 0 # 0=nothing, 1=charge, 2=discharge
     ACVoltage = 0
     ACCurrent = 0
-    ACPower= 0 # Posivie = give power, negative = charge power.
+    ACPower = 0 # Positive = give power, negative = charge power.
     ACFrequency = 0
     ACOVoltage = 0
     ACOCurrent = 0
@@ -174,129 +229,253 @@ $MarstekState = [pscustomobject]@{
     Temp = 0
     TempMOS1 = 0
     TempMOS2 = 0
+    AlarmState = 0
+    AlarmStateHR = "" # Human Readable
+    FaultState = 0
+    FaultStateHR = "" # Human Readable
     InverterState = 0
     InverterStateHR = ""
 }
 
-# Battery data
-[byte[]]$GetMarstekStatus=(0x01,0x03,0x7d,0x64,0x00,0x06) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-$SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 -Command $GetMarstekStatus
-if ($SerialData) {
-    $MarstekState.BatteryVoltage = ($SerialData[3] * 256 + $SerialData[4])/100
-    $MarstekState.BatteryCurrent = ($SerialData[5] * 256 + $SerialData[6])/10000
-    # Following is singed int32, therefore roundabout hex since I am too lazy. bigint has the advantage to understan s32 and s16.
-    $MarstekState.BatteryPower = [int]([bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2") + $SerialData[9].ToString("x2") + $SerialData[10].ToString("x2"), 'AllowHexSpecifier'))
-    $MarstekState.BatterySOC = $SerialData[11] * 256 + $SerialData[12]
-    $MarstekState.BatteryTotalEnergy = ($SerialData[13] * 256 + $SerialData[14])/1000
-}
-
-# Grid data
-[byte[]]$GetMarstekStatus=(0x01,0x03,0x7d,0xc8,0x00,0x05) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-$SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 -Command $GetMarstekStatus
-if ($SerialData) {
-    $MarstekState.ACVoltage = ($SerialData[3] * 256 + $SerialData[4])/10
-    $MarstekState.ACCurrent = ($SerialData[5] * 256 + $SerialData[6])/100
-    $MarstekState.ACPower = [int]([bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2") + $SerialData[9].ToString("x2") + $SerialData[10].ToString("x2"), 'AllowHexSpecifier'))
-    $MarstekState.ACFrequency = ($SerialData[11] * 256 + $SerialData[12])/100
-}
-
+$SerialCommands=@{}
+# Marstek Battery data
+[byte[]]$SerialCommand=(0x01,0x03,0x7d,0x64,0x00,0x06) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+$SerialCommands[0]=$SerialCommand
+# Marstek Grid data
+[byte[]]$SerialCommand=(0x01,0x03,0x7d,0xc8,0x00,0x05) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+$SerialCommands[1]=$SerialCommand
 # Offgrid plug data
-[byte[]]$GetMarstekStatus=(0x01,0x03,0x7e,0x2c,0x00,0x04) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-$SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 -Command $GetMarstekStatus
-if ($SerialData) {
-    $MarstekState.ACOVoltage = ($SerialData[3] * 256 + $SerialData[4])/10
-    $MarstekState.ACOCurrent = ($SerialData[5] * 256 + $SerialData[6])/100
-    # Following is singed int32, therefore roundabout hex since I am too lazy.
-    $MarstekState.ACOPower = [int]([bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2") + $SerialData[9].ToString("x2") + $SerialData[10].ToString("x2"), 'AllowHexSpecifier'))
-}
-
+[byte[]]$SerialCommand=(0x01,0x03,0x7e,0x2c,0x00,0x04) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+$SerialCommands[2]=$SerialCommand
 # Temperature data
-[byte[]]$GetMarstekStatus=(0x01,0x03,0x88,0xb8,0x00,0x03) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-$SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 -Command $GetMarstekStatus
-if ($SerialData) {
-    $MarstekState.Temp = [bigint]::Parse($SerialData[3].ToString("x2") + $SerialData[4].ToString("x2"), 'AllowHexSpecifier')/10
-    $MarstekState.TempMOS1 = [bigint]::Parse($SerialData[5].ToString("x2") + $SerialData[6].ToString("x2"), 'AllowHexSpecifier')/10
-    # Following is singed int32, therefore roundabout hex since I am too lazy.
-    $MarstekState.TempMOS2 = [bigint]::Parse($SerialData[7].ToString("x2") + $SerialData[8].ToString("x2"), 'AllowHexSpecifier')/10
-}
-
+[byte[]]$SerialCommand=(0x01,0x03,0x88,0xb8,0x00,0x03) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+$SerialCommands[3]=$SerialCommand
 # Inverter State
-[byte[]]$GetMarstekStatus=(0x01,0x03,0x89,0x1c,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-$SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 25 -Timeout 2 -Command $GetMarstekStatus
-if ($SerialData) {
-    $MarstekState.InverterState = $SerialData[3]
-    switch ($SerialData[3]) {
-        0 {$MarstekState.InverterStateHR="sleep"}
-        1 {$MarstekState.InverterStateHR="standby"}
-        2 {$MarstekState.InverterStateHR="charge"}
-        3 {$MarstekState.InverterStateHR="discharge"}
-        4 {$MarstekState.InverterStateHR="backup mode"}
-        5 {$MarstekState.InverterStateHR="OTA upgrade"}
-        default {$MarstekState.InverterStateHR="illegal value"}
+[byte[]]$SerialCommand=(0x01,0x03,0x89,0x1c,0x00,0x01) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+$SerialCommands[4]=$SerialCommand
+# Read charge Watt & discharge Watt
+[byte[]]$SerialCommand=(0x01,0x03,0xa4,0x24,0x00,0x02) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+$SerialCommands[5]=$SerialCommand
+# Read charge mode 0= nothing, 1=charge, 2=discharge
+[byte[]]$SerialCommand=(0x01,0x03,0xa4,0x1A,0x00,0x01) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+$SerialCommands[6]=$SerialCommand
+# Alarm state
+[byte[]]$SerialCommand=(0x01,0x03,0x8C,0xA0,0x00,0x02) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+$SerialCommands[10]=$SerialCommand
+# Fault state 36100
+[byte[]]$SerialCommand=(0x01,0x03,0x8D,0x04,0x00,0x04) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+$SerialCommands[11]=$SerialCommand
+# Read state whether Marstek is in manual RS485 control.
+[byte[]]$SerialCommand=(0x01,0x03,0xa4,0x10,0x00,0x01) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+$SerialCommands[100]=$SerialCommand
+if ($SerialData -ne $null) { # This check: If the receiving variale is defined as "byte[]" or whatever, for example multimple runs within one shell, it cannot digest/accept the hash table without beeing cleared first.
+    Remove-Variable SerialData
+}
+$SerialData = Read-Serial -COM "COM4" -Speed 115200 -ResponseWait 50 -Timeout 2 -Commandos $SerialCommands
+if ($SerialData[0].Count -eq 17) {
+    $MarstekData.BatteryVoltage = ($SerialData[0][3] * 256 + $SerialData[0][4])/100
+    # Following is float by singed int32 / 100, therefore roundabout hex since I am too lazy. bigint has the advantage to understand s32 and s16.
+    $MarstekData.BatteryCurrent = [double]([bigint]::Parse($SerialData[0][5].ToString("x2")+$SerialData[0][6].ToString("x2"), 'AllowHexSpecifier'))/100 # +($SerialData[0][5] * 256 + $SerialData[0][6])/100
+    # Following is singed int32, therefore roundabout hex since I am too lazy. bigint has the advantage to understand s32 and s16.
+    $MarstekData.BatteryPower = [int]([bigint]::Parse($SerialData[0][7].ToString("x2") + $SerialData[0][8].ToString("x2") + $SerialData[0][9].ToString("x2") + $SerialData[0][10].ToString("x2"), 'AllowHexSpecifier'))
+    $MarstekData.BatterySOC = $SerialData[0][11] * 256 + $SerialData[0][12]
+    $MarstekData.BatteryTotalEnergy = ($SerialData[0][13] * 256 + $SerialData[0][14])/1000
+    $Power.BatV = $MarstekData.BatteryVoltage
+    $Power.BatSOC = $MarstekData.BatterySOC
+}
+if ($SerialData[1].Count -eq 15) {
+    $MarstekData.ACVoltage = ($SerialData[1][3] * 256 + $SerialData[1][4])/10
+    $MarstekData.ACCurrent = ($SerialData[1][5] * 256 + $SerialData[1][6])/100 # $SerialData[1][5].ToString("x2")+ " " + $SerialData[1][6].ToString("x2") +" " +($SerialData[1][5] * 256 + $SerialData[1][6]).ToString()
+    $MarstekData.ACPower = [int]([bigint]::Parse($SerialData[1][7].ToString("x2") + $SerialData[1][8].ToString("x2") + $SerialData[1][9].ToString("x2") + $SerialData[1][10].ToString("x2"), 'AllowHexSpecifier'))
+    $MarstekData.ACFrequency = ($SerialData[1][11] * 256 + $SerialData[1][12])/100
+    $Power.BatACPow = $MarstekData.ACPower
+}
+if ($SerialData[2].Count -eq 13) {
+    $MarstekData.ACOVoltage = ($SerialData[2][3] * 256 + $SerialData[2][4])/10
+    $MarstekData.ACOCurrent = ($SerialData[2][5] * 256 + $SerialData[2][6])/100
+    # Following is singed int32, therefore roundabout hex since I am too lazy.
+    $MarstekData.ACOPower = [int]([bigint]::Parse($SerialData[2][7].ToString("x2") + $SerialData[2][8].ToString("x2") + $SerialData[2][9].ToString("x2") + $SerialData[2][10].ToString("x2"), 'AllowHexSpecifier'))
+}
+if ($SerialData[3].Count -eq 11) {
+    $MarstekData.Temp = [bigint]::Parse($SerialData[3][3].ToString("x2") + $SerialData[3][4].ToString("x2"), 'AllowHexSpecifier')/10
+    $MarstekData.TempMOS1 = [bigint]::Parse($SerialData[3][5].ToString("x2") + $SerialData[3][6].ToString("x2"), 'AllowHexSpecifier')/10
+    # Following is singed int32, therefore roundabout hex since I am too lazy.
+    $MarstekData.TempMOS2 = [bigint]::Parse($SerialData[3][7].ToString("x2") + $SerialData[3][8].ToString("x2"), 'AllowHexSpecifier')/10
+}
+if ($SerialData[4].Count -eq 7) {
+    $MarstekData.InverterState = $SerialData[4][3]
+    switch ($SerialData[4][3]) {
+        0 {$MarstekData.InverterStateHR="sleep"}
+        1 {$MarstekData.InverterStateHR="standby"}
+        2 {$MarstekData.InverterStateHR="charge"}
+        3 {$MarstekData.InverterStateHR="discharge"}
+        4 {$MarstekData.InverterStateHR="backup mode"}
+        5 {$MarstekData.InverterStateHR="OTA upgrade"}
+        default {$MarstekData.InverterStateHR="illegal value"}
+    }
+}
+if ($SerialData[5].Count -eq 9) {
+    $MarstekData.BatteryCharge = $SerialData[5][3] * 256 + $SerialData[5][4]
+    $MarstekData.BatteryDischarge = $SerialData[5][5] * 256 + $SerialData[5][6]
+}
+if ($SerialData[6].Count -eq 7) {
+    $MarstekData.BatteryMode = $SerialData[6][4]
+}
+if ($SerialData[10].Count -eq 9) {
+    $MarstekData.AlarmState = $SerialData[5][3].ToString("x2")+$SerialData[5][4].ToString("x2")
+    if ($SerialData[5][3] -band 0x01 -gt 0) {$MarstekData.AlarmStateHR += "PLL Abnormal Restart,"}
+    if ($SerialData[5][3] -band 0x02 -gt 0) {$MarstekData.AlarmStateHR += "Overtemperature Limit,"}
+    if ($SerialData[5][3] -band 0x04 -gt 0) {$MarstekData.AlarmStateHR += "Low Temperature Limit,"}
+    if ($SerialData[5][3] -band 0x08 -gt 0) {$MarstekData.AlarmStateHR += "Fan Abnormal Warning,"}
+    if ($SerialData[5][3] -band 0x10 -gt 0) {$MarstekData.AlarmStateHR += "Low Battery SOC Warning,"}
+    if ($SerialData[5][3] -band 0x20 -gt 0) {$MarstekData.AlarmStateHR += "Output Overcurrent Warnung,"}
+    if ($SerialData[5][3] -band 0x40 -gt 0) {$MarstekData.AlarmStateHR += "Abnormal Line Sequence Detection,"}
+    if ($SerialData[5][5] -band 0x01 -gt 0) {$MarstekData.AlarmStateHR += "WIFI abnormal,"}
+    if ($SerialData[5][5] -band 0x02 -gt 0) {$MarstekData.AlarmStateHR += "BLE abnormal,"}
+    if ($SerialData[5][5] -band 0x04 -gt 0) {$MarstekData.AlarmStateHR += "Network abnormal,"}
+    if ($SerialData[5][5] -band 0x08 -gt 0) {$MarstekData.AlarmStateHR += "CT connection abnormal,"}
+}
+if ($SerialData[11].Count -eq 13) {
+    $MarstekData.FaultState = $SerialData[6][3].ToString("x2")+$SerialData[6][4].ToString("x2")+$SerialData[6][5].ToString("x2")+$SerialData[6][6].ToString("x2")
+    if ($SerialData[6][3] -band 0x01 -gt 0) {$MarstekData.AlarmStateHR += "Grid Overvoltage,"}
+    if ($SerialData[6][3] -band 0x02 -gt 0) {$MarstekData.AlarmStateHR += "Grid Undervoltage,"}
+    if ($SerialData[6][3] -band 0x04 -gt 0) {$MarstekData.AlarmStateHR += "Grid Overfrequency,"}
+    if ($SerialData[6][3] -band 0x08 -gt 0) {$MarstekData.AlarmStateHR += "Grid Underfrequency,"}
+    if ($SerialData[6][3] -band 0x10 -gt 0) {$MarstekData.AlarmStateHR += "Grid peak voltage abnormal,"}
+    if ($SerialData[6][3] -band 0x20 -gt 0) {$MarstekData.AlarmStateHR += "Current Dcover,"}
+    if ($SerialData[6][3] -band 0x40 -gt 0) {$MarstekData.AlarmStateHR += "Voltage Dcover,"}
+    if ($SerialData[6][5] -band 0x01 -gt 0) {$MarstekData.AlarmStateHR += "Bat Overvoltage,"}
+    if ($SerialData[6][5] -band 0x02 -gt 0) {$MarstekData.AlarmStateHR += "Bat Undervoltage,"}
+    if ($SerialData[6][5] -band 0x04 -gt 0) {$MarstekData.AlarmStateHR += "Bat low SOC,"}
+    if ($SerialData[6][5] -band 0x08 -gt 0) {$MarstekData.AlarmStateHR += "Bat communication failure,"}
+    if ($SerialData[6][5] -band 0x10 -gt 0) {$MarstekData.AlarmStateHR += "BMS protect,"}
+    # From here on Duravolt documentation states register 36103/36104, but they seem to be 36102/36103 ?
+    if ($SerialData[6][7] -band 0x01 -gt 0) {$MarstekData.AlarmStateHR += "hardware Bus overvoltage,"}
+    if ($SerialData[6][7] -band 0x02 -gt 0) {$MarstekData.AlarmStateHR += "hardware Output overcurrent,"}
+    if ($SerialData[6][7] -band 0x04 -gt 0) {$MarstekData.AlarmStateHR += "hardware trand overcurrent,"}
+    if ($SerialData[6][7] -band 0x08 -gt 0) {$MarstekData.AlarmStateHR += "hardware Battery overcurrent,"}
+    if ($SerialData[6][7] -band 0x10 -gt 0) {$MarstekData.AlarmStateHR += "Hardware protection,"}
+    if ($SerialData[6][7] -band 0x20 -gt 0) {$MarstekData.AlarmStateHR += "Output overcurrent,"}
+    if ($SerialData[6][7] -band 0x40 -gt 0) {$MarstekData.AlarmStateHR += "High voltage bus overvoltage,"}
+    if ($SerialData[6][7] -band 0x80 -gt 0) {$MarstekData.AlarmStateHR += "Hugh voltage bus ondervoltage,"}
+    if ($SerialData[6][6] -band 0x01 -gt 0) {$MarstekData.AlarmStateHR += "Overpower protection,"}
+    if ($SerialData[6][6] -band 0x02 -gt 0) {$MarstekData.AlarmStateHR += "FSM abnormal,"}
+    if ($SerialData[6][6] -band 0x04 -gt 0) {$MarstekData.AlarmStateHR += "Overtemperature protection,"}
+    if ($SerialData[6][6] -band 0x08 -gt 0) {$MarstekData.AlarmStateHR += "Inverter soft start timeout,"}
+    if ($SerialData[6][9] -band 0x01 -gt 0) {$MarstekData.AlarmStateHR += "self-test fault,"}
+    if ($SerialData[6][9] -band 0x02 -gt 0) {$MarstekData.AlarmStateHR += "eeprom fault,"}
+    if ($SerialData[6][9] -band 0x04 -gt 0) {$MarstekData.AlarmStateHR += "other system fault,"}
+}
+# Check whether Marstek is in manual RS485 control. If not: Activate it.
+if ($SerialData[100].Count -eq 7) {
+    if ($SerialData[100][3] -ne 85 -or $SerialData[100][4] -ne 170) {
+        [byte[]]$SerialCommand=(0x01,0x06,0xa4,0x10,0x55,0xAA) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+        $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Commandos $SerialCommand
     }
 }
 
-$MarstekState
+
+$MarstekData | fl
 
 $null = Read-Host "From here on it takes care about SETTING the charge / discharge. Enter to continue, or CTRL+C to stop"
 
-# RS485 Mode SET and then check
-# Check whether Marstek is in manual RS485 control. If not: Activate it.
-[byte[]]$GetMarstekStatus=(0x01,0x03,0xa4,0x10,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-$SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-[System.BitConverter]::ToString($SerialData)
-if ($SerialData[3] -ne 85 -or $SerialData[4] -ne 170) {
-    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x10,0x55,0xAA) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-    [System.BitConverter]::ToString($SerialData)
+$ACPowerFlag = $false
+# Calculate carge / discharge power change. Case if charge: start at -11, and even then 10 less than possible to avoid paying for charge.
+# Positive = Feed to grid, negative = charge
+if (($totalpower -lt 0 -and $totalpower -ge -10 -and $MarstekData.ACPower -eq 0) -or
+    ($MarstekData.ACPower -gt 0 -and -$totalpower-25 -gt $MarstekData.ACPower)) {
+    $ACPower = 0
+} else {
+    if ($ACPower-$MarstekData.ACPower -lt 60 -or $MarstekData.ACPower-$ACPower -lt 60 -or $ACPower -eq 0) { # set value for smaller jumps
+        $ACPower = [int](($totalpower+2)*0.96+10*($totalpower+2 -lt -15)+$MarstekData.ACPower) # +2 = dance discharge around -2 instead of zero. This seems to quiet down the reguilation and prevent overshoot too?
+        #"$TimeStamp S3EM $($totalpower), PRE Marstek ($($MarstekData.BatterySOC)% charge), set from $($MarstekData.ACPower)W to Charge $($ACPower)W" | Tee-Object -FilePath $Logfile -Append
+    } else {
+        $ACPower = $MarstekData.ACPower-$totalpower*0.9 # Set value directly, for bigger jumps, but not directly to target since Marstek cannot change that fast.
+    }
 }
-[byte[]]$GetMarstekStatus=(0x01,0x03,0xa4,0x10,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-$SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-[System.BitConverter]::ToString($SerialData)
+# Check charge limits / value too low / Boiler off before discharge
+# Absolut max limit
+if  ($ACPower -lt -1500 -or $MarstekData.ACPower -lt -1500) { $ACPower = -1500}
+if  ($ACPower -gt  2000 -or $MarstekData.ACPower -gt  2000) { $ACPower =  2000}
+# "Depending on" Limits
+if  ($MarstekData.BatterySOC -gt 70 -and ($ACPower -lt  -999 -or $MarstekData.ACPower -lt  -999)) { $ACPower = -999}
+if  ($MarstekData.BatterySOC -gt 80 -and ($ACPower -lt  -500 -or $MarstekData.ACPower -lt  -500)) { $ACPower = -500}
+if  ($MarstekData.BatterySOC -gt 86 -and ($ACPower -lt  -350 -or $MarstekData.ACPower -lt  -350)) { $ACPower = -350}
+if (($MarstekData.BatterySOC -gt 93 -and ($ACPower -lt     0 -or $MarstekData.ACPower -lt     0)) -or
+    ($MarstekData.BatterySOC -lt 10 -and ($ACPower -gt     0 -or $MarstekData.ACPower -gt     0)) -or
+    ($MarstekData.BatteryVoltage -lt 47.00 -and ($ACPower -gt 0 -or $MarstekData.ACPower -gt  0)) -or
+    ([Math]::Abs($ACPower)   -lt  6 -and [Math]::Abs($MarstekData.ACPower) -lt 6) -or
+    ($Power.BoilerWatt -gt 30 -and $MarstekData.ACPower -gt 0)){ $ACPower =     0}
+# Stop
+if ($ACPower -eq 0 -and $MarstekData.BatteryMode -ne 0) { # $MarstekData.ACPower -ne 0) {
+    "$TimeStamp S3EM $($totalpower), Marstek ($($MarstekData.BatterySOC)% charge), set from $($MarstekData.ACPower)W to 0W" | Tee-Object -FilePath $Logfile -Append
+    $SerialCommands=@{}
+    # Set Mode stop
+    [byte[]]$SerialCommand=(0x01,0x06,0xa4,0x1A,0,0) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+    $SerialCommands[0]=$SerialCommand
+    # Set charge Watt
+    [byte[]]$SerialCommand=(0x01,0x06,0xa4,0x24,0,0) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+    $SerialCommands[1]=$SerialCommand
+    # Set discharge Watt
+    [byte[]]$SerialCommand=(0x01,0x06,0xa4,0x25,0,0) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+    $SerialCommands[2]=$SerialCommand
+    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Commandos $SerialCommands
+}
+# if read ACPower and Read BatteyCharge power are too far away skip this round, it needs a few more seconds to settle.
+if ($MarstekData.ACPower-$BatteryCharge -lt 6) {
+    # ignore too tiny changes. 6 to decrease discharge, 2 to increase discharge.
+    if ($MarstekData.ACPower-$ACPower -gt 6 -or $ACPower-$MarstekData.ACPower -gt 2) {
+        $ACPowerFlag = $true
+        # Feed to grid
+        if ($ACPower -gt 0 -and $Power.BoilerWatt -lt 30) {
+            "$TimeStamp S3EM $($totalpower), Marstek ($($MarstekData.BatterySOC)% charge), set from $($MarstekData.ACPower)W to discharge $($ACPower)W" | Tee-Object -FilePath $Logfile -Append
+            $ACPowerHigh = [Byte]([Math]::Floor([Math]::Abs($ACPower)/256))
+            $ACPowerLow = [Byte]([math]::abs($ACPower)%256)
+            $SerialCommands=@{}
+            # Set discharge Watt
+            [byte[]]$SerialCommand=(0x01,0x06,0xa4,0x25,$ACPowerHigh,$ACPowerLow) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+            $SerialCommands[1]=$SerialCommand
+            if ($MarstekData.BatteryCharge -ne 0) {
+                # Set charge Watt 0
+                [byte[]]$SerialCommand=(0x01,0x06,0xa4,0x24,0x00,0x00) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+                $SerialCommands[0]=$SerialCommand
+            }
+            if ($MarstekData.BatteryMode -ne 2) {
+                # Set Mode discharge
+                [byte[]]$SerialCommand=(0x01,0x06,0xa4,0x1A,0x00,0x02) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+                $SerialCommands[2]=$SerialCommand
+            }
+            $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Commandos $SerialCommands
+        }
+    }
+    # ignore too tiny changes. 15 to increase charge, 3 to decrease charge.
+    if ($MarstekData.ACPower-$ACPower -gt 6 -or $ACPower-$MarstekData.ACPower -gt 3) {
+        $ACPowerFlag = $true
+        # Charge battery
+        if (($ACPower -lt -40  -and $MarstekData.BatterySOC -lt 93) -or ($ACPower -lt 0 -and $MarstekData.ACPower -lt 0)) { # if at 96% charge only more if carging already runs. This catches "got from 97% discharge to 96%" no, wait until 95% before charging again.
+            "$TimeStamp S3EM $($totalpower), Marstek ($($MarstekData.BatterySOC)% charge), set from $($MarstekData.ACPower)W to charge $($ACPower)W" | Tee-Object -FilePath $Logfile -Append
+            $ACPowerHigh = [Byte]([Math]::Floor([math]::abs($ACPower)/256))
+            $ACPowerLow = [Byte]([math]::abs($ACPower)%256)
+            $SerialCommands=@{}
+            # Set charge Watt
+            [byte[]]$SerialCommand=(0x01,0x06,0xa4,0x24,$ACPowerHigh,$ACPowerLow) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+            $SerialCommands[1]=$SerialCommand
+            if ($MarstekData.BatteryDischarge -ne 0) {
+                # Set discharge Watt 0
+                [byte[]]$SerialCommand=(0x01,0x06,0xa4,0x25,0,0) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+                $SerialCommands[0]=$SerialCommand
+            }
+            if ($MarstekData.BatteryMode -ne 1) {
+                # Set Mode charge
+                [byte[]]$SerialCommand=(0x01,0x06,0xa4,0x1A,0x00,0x01) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+                $SerialCommands[2]=$SerialCommand
+            }
+            $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Commandos $SerialCommands
+        }
+    }
+}
 
-# Set carge / discharge power, feed to grid
-$ACPower = 145 # Positive = Feed to grid, negative 0 charge.
-if ($ACPower -eq 0) {
-    # Mode force change stop
-    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x1A,0x00,0x00) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-    # Set force charge to zero
-    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x24,0,0) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-    # Set force discharge
-    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x25,0,0) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-}
-if ($ACPower -gt 0) { # Feed to grid
-    $ACPowerHigh = [Byte]([Math]::Floor(([math]::abs($ACPower)+1)/256))
-    $ACPowerLow = [Byte](([math]::abs($ACPower)+1)%256)
-    # Set force charge to zero
-    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x24,0x00,0x00) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-    # Set force discharge to value
-    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x25,$ACPowerHigh,$ACPowerLow) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-    # Mode force change discharge
-    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x1A,0x00,0x02) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-    # ^^^ WORKED!
-}
-if ($ACPower -lt 0) { # Feed the battery
-    $ACPowerHigh = [Byte]([Math]::Floor(([math]::abs($ACPower)+1)/256))
-    $ACPowerLow = [Byte](([math]::abs($ACPower)+1)%256)
-    # Set force discharge to zero
-    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x25,0x00,0x00) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-    # Set force charge to value
-    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x24,$ACPowerHigh,$ACPowerLow) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-    # Mode force change charge
-    [byte[]]$GetMarstekStatus=(0x01,0x06,0xa4,0x1A,0x00,0x01) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-    $SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
-    # ^^^ WORKED!
-}
-
-# reboot - commented out ;D.
-[byte[]]$GetMarstekStatus=(0x01,0x06,0xa0,0x28,0x55,0xAA) ; $GetMarstekStatus+=Get-CRC16Modbus -InputObject $GetMarstekStatus
-#$SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $GetMarstekStatus
+# reboot the Marstek - commented out ;D.
+[byte[]]$SerialCommand=(0x01,0x06,0xa0,0x28,0x55,0xAA) ; $SerialCommand+=Get-CRC16Modbus -InputObject $SerialCommand
+#$SerialData = Read-Serial -COM "COM4" -Speed 115200 -Timeout 2 -ResponseWait 50 -Command $SerialCommand
 #[System.BitConverter]::ToString($SerialData)
