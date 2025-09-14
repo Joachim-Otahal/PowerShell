@@ -33,7 +33,7 @@ Read Marstek Venus E Data via RS485-2-USB adapter with powershell and get the us
 A big THANK YOU to Duravolt ! https://duravolt.nl/wp-content/uploads/Duravolt-Plug-in-Battery-Modbus.pdf
 
 UPDATE two days later (15th May 2025): Internet was disconnected for five minutes, router reboot, and that Marstek Venus E lost all its config, no more connected to WLAN, cannot see Shelly 3 EM pro any more, and not visible in the App. So I had to add the control how much to charge from grid or pump into the grid in my control script RIGHT ABOUT NOW. The examples in the powershell script here now include controlling that. Did not expect this to be needed so soon. BTW: As of 3rd June 2025 the Android app is still buggy and cannot find the Venus on some Android phones, even though the Android OS itself, even all my Windows machines, sees the Venus listed in the Bluetooth environment.
-UPDATE August 2025: Marstek updates the firmware, it should work now, but it is too late. Won't change back from manual control.
+UPDATE August 2025: Marstek updated the firmware and Android software, works now, but it is too late. Won't change back from manual control.
 
 ![image](https://github.com/user-attachments/assets/c2a51937-2865-4633-ad3c-d4ff62e3ebf7)
 ![IMG_20250602_160521_1 RS485 2 USB](https://github.com/user-attachments/assets/22e52db1-64ec-4df6-89e0-53f7491d67cb)
