@@ -24,6 +24,7 @@ Versionlog:
   2021-11-?? 0.0 Wrote first version.
   2023-04-05 0.1 first version to be published, request from https://github.com/libjxl/libjxl/issues/683#issuecomment-1492947842
   2023-04-19 0.3 Workaround for that weird random Windows 11 Get-Volume bug
+  2026-03-35 0.4 Removes unicode workaround for libjxl tools 0.11.2
 
 by Joachim Otahal, Germany, jou@gmx.net, https://joumxyzptlk.de, https://github.com/Joachim-Otahal?tab=repositories
 
@@ -60,24 +61,8 @@ if ($dlist[0].FullName.StartsWith("\") -or $dlist[0].PSIsContainer -ne $true) {
     $null = Read-Host "Press ENTER to exit"
     break
 } else {
-    # check whether local NTFS or not (i.e. whether unicode trick with hardlink can be used or copy method)
-	# Nice bug in Windwos 11 again, the first Get-Volume sometimes failes for no reason...
-	try {
-		$drive = Get-Volume -DriveLetter $dlist[0].FullName.Substring(0,1)
-	} catch {
-		start-sleep 1
-		$drive = Get-Volume -DriveLetter $dlist[0].FullName.Substring(0,1)
-		write-host "Wait 10 seconds since Windows 11 has a nice bug where Get-Volume fails on the first run." ; start-sleep 10
-		$drive = Get-Volume -DriveLetter $dlist[0].FullName.Substring(0,1)
-	}
-    if ($drive.FileSystemType -eq "NTFS") {
-        $localntfs=$true
-    } else {
-        $localntfs=$false
-    }
-    
     for ($j = 0 ; $j -lt $dlist.Count ; $j++) {
-        # Yes, excluding GIF for now, fails too often especially with Dilbert comics.
+        # Yes, excluding GIF for now, fails too often especially with Dilbert comics (libjxl 0.7).
         $list = (Get-ChildItem -Recurse -File -LiteralPath $dlist[$j].FullName ).Where({$_.Extension -match "png" -or $_.Extension -match "jpg" -or $_.Extension -match "jpeg" -or $_.Extension -match "jfif"})
         # We have to enter the directory to avoid problems with a directory that contains unicode characters.
         if ($list.count -eq 0) {
@@ -94,29 +79,9 @@ if ($dlist[0].FullName.StartsWith("\") -or $dlist[0].PSIsContainer -ne $true) {
                 # If the file is below 50 MBytes use effort 8
                 if ($SourceFile.Length -lt 50000000) { $effort="8" }
                 Write-Output -InputObject "Directory $($j+1) of $($dlist.Count), file $($i+1) of $($list.Count), $($SourceFile.FullName)"
-                # Detecting whether we are on unicode
-                if ($SourceFile.Name.GetEnumerator().where({[int][char]$_ -gt 255})) {
-                    # Temp-file random seed.
-    				$Random = (Get-Random -Minimum 100000000 -Maximum 999999999).ToString()
-                    if ($localntfs) {
-                        Write-Verbose "Using NTFS-hardlink as unicode workaround." -Verbose
-                        # use hardlink on local ntfs, is faster than creating a copy.
-                        $null = New-Item -ItemType HardLink -Name $("000000-" + $Random + $SourceFile.Extension) -Value $SourceFile.Name
-                    } else {
-                        Write-Verbose "Using copy as unicode workaround." -Verbose
-                        $null = Copy-Item -LiteralPath $SourceFile.Name -Destination $("000000-" + $Random + $SourceFile.Extension)
-                    }
-                    &$cjxl "$("000000-" + $Random + $SourceFile.Extension)" "$("000000-" + $Random + ".jxl")" -d 0 -e $effort 2>&1 | %{ "$_" }
-                    Rename-Item -LiteralPath "$("000000-" + $Random + ".jxl")" -NewName $outputname -ErrorAction Ignore
-                    Remove-Item -LiteralPath "$("000000-" + $Random + $SourceFile.Extension)" -Force -ErrorAction Ignore -WhatIf:$WhatIf
-                    (Get-Item -LiteralPath $output -ErrorAction Ignore).CreationTime  = $SourceFile.CreationTime
-                    (Get-Item -LiteralPath $output -ErrorAction Ignore).LastWriteTime = $SourceFile.LastWriteTime
-                } else {
-                    # not unicode
-                    &$cjxl "$($SourceFile.Name)" "$outputname" -d 0 -e $effort 2>&1 | %{ "$_" }
-                    (Get-Item -LiteralPath $output -ErrorAction Ignore).CreationTime  = $SourceFile.CreationTime
-                    (Get-Item -LiteralPath $output -ErrorAction Ignore).LastWriteTime = $SourceFile.LastWriteTime
-                }
+                &$cjxl "$($SourceFile.Name)" "$outputname" -d 0 -e $effort 2>&1 | %{ "$_" }
+                (Get-Item -LiteralPath $output -ErrorAction Ignore).CreationTime  = $SourceFile.CreationTime
+                (Get-Item -LiteralPath $output -ErrorAction Ignore).LastWriteTime = $SourceFile.LastWriteTime
                 $outputresult = Get-Item -LiteralPath $output -ErrorAction Ignore
                 # we kill the original only if the .jxl result is smaller and no errors occured.
                 if ($outputresult.Length -lt $SourceFile.Length -and $outputresult.Length -gt "0") {
