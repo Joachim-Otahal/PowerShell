@@ -52,6 +52,8 @@ There is this very annoying bug in Powershell_ISE since Server 2022 and Windows 
 As you can see: It works in a real shell. Since I cannot install Visual Studio and other things on Customers Servers just to work around this bug we, the admins, still rely on Powershell_ISE.
 Run that script, and then you will have working -LiteralPath back.
 
+<img width="903" height="630" alt="image" src="https://github.com/user-attachments/assets/8cff3473-69fd-4f69-b02b-3295c2151ae0" />
+
 ## Test-Ping-ps1
 This is a ping in pure powershell. I needed something "faster than Test-Netconnection". It sends, by default, four pings within 800 ms, really only pings, and then gives up. You can change the TTL, Timeout and Retry settings with -TTL -TimeOut and -Retry.
 
