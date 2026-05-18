@@ -7,6 +7,9 @@
 # And it is: We abuse RunSapce.
 # Include the below stuff in your script, and it will activate the workaround.
 
+# Version 0 : 2026-05-16 First "It works! Ship it!" version
+# Version 1 : 2026-05-18 Do NOT leave the started powershell(s) behind if you exit powershell-ISE.
+
 # Pre-Check whether -LiteralPath would work in first place.
 $longpathsupported = $true
 if ((Get-ItemProperty "HKLM:SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Release -lt 394802) {
@@ -44,17 +47,25 @@ if ($PSISELiteralPathBug -and $longpathsupported) {
         $Runspace.Open()
         $Runspace
     }
+    # Check for broken Runspaces
+    foreach ($RunSpace in @(Get-Runspace).Where({$_.Name -like "PowerShell*_ISE" -and $_.RunspaceStateInfo.State -eq "Broken"})) {
+        $RunSpace.Dispose()
+    }
     # Check if already running runspaces...
-    $RunSpaces = @(Get-Runspace).Where({$_.Id -gt 1}) # Runspace1 is normalle PS ISE first self.
+    $RunSpaces = @(Get-Runspace).Where({$_.Id -gt 1}) # Runspace1 is normally PS ISE first self.
     if ($RunSpaces.count -gt 0) {
         Write-Verbose "Already running following runspaces:`n $(($RunSpaces | Out-String).Trim())" -Verbose
     } else {
         $PowerShellExecutable = "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
         if (Test-Path -Path $PowerShellExecutable) {
-            $PowerShellProcess = Start-Process $PowerShellExecutable -ArgumentList @("-NoExit") -PassThru -WindowStyle Hidden
+            $ArgumentList = @("-NoExit","-Command",
+                "Start-Job -ScriptBlock {while ((Get-Process -id $PID -ErrorAction Ignore).Responding) {Start-Sleep 30};"+'Stop-Process -Force -Id $using:PID}'
+            )
+            $PowerShellProcess = Start-Process $PowerShellExecutable -ArgumentList $ArgumentList -PassThru -WindowStyle Hidden
             $RunspacePowerShell = New-OutOfProcRunspace -ProcessId $PowerShellProcess.Id
             $Host.PushRunspace($RunspacePowerShell)
             Write-Verbose "Workaround activated. You can rund this script again and -LiteralPath will work." -Verbose
+            Write-Verbose "PID is $($PowerShellProcess.Id), it won't exit when you close PS_ISE." -Verbose
             break
         } else {
             Write-Verbose "Missing: $PowerShellExecutable" -Verbose
