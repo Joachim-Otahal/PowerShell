@@ -64,8 +64,7 @@ if ($PSISELiteralPathBug -and $longpathsupported) {
             $PowerShellProcess = Start-Process $PowerShellExecutable -ArgumentList $ArgumentList -PassThru -WindowStyle Hidden
             $RunspacePowerShell = New-OutOfProcRunspace -ProcessId $PowerShellProcess.Id
             $Host.PushRunspace($RunspacePowerShell)
-            Write-Verbose "Workaround activated. You can rund this script again and -LiteralPath will work." -Verbose
-            Write-Verbose "PID is $($PowerShellProcess.Id), it won't exit when you close PS_ISE." -Verbose
+            Write-Verbose "Workaround activated. You have tu re-run your script after this, and -LiteralPath ""\\?\C:\"" will work." -Verbose
             break
         } else {
             Write-Verbose "Missing: $PowerShellExecutable" -Verbose
