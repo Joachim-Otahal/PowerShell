@@ -49,7 +49,7 @@ There is this very annoying bug in Powershell_ISE since Server 2022 and Windows 
 
 <img width="782" height="595" alt="image" src="https://github.com/user-attachments/assets/8283fa3a-8566-4af8-809d-257acdcffe76" />
 
-As you can see: It works in a real shell. Since I cannot install Visual Studio and other things on customers servers just to work around this bugW we, the admins, still rely on Powershell_ISE.
+As you can see: It works in a real shell. Since I cannot install Visual Studio and other things on customers servers just to work around this bug. We, the admins, still rely on Powershell_ISE.
 Run that script, and then you will have working -LiteralPath back.
 
 
