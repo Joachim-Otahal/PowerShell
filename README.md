@@ -44,13 +44,14 @@ On subsequent runs it only analyzes the event logs when auditing/logging. Report
 #### NTLMv1 SMB1 detailed audit and logging Scheduled Task export from Server 2022.xml
 Task scheduler -> import. For a daily report, expecially on busy domain controllers where the security log does not span several weeks.
 
-## Powershel ISE LiteralPath bug since Server 2022 and Windows 11 - WORKAROUND.ps1
+## Powershell ISE LiteralPath bug since Server 2022 and Windows 11 - WORKAROUND.ps1
 There is this very annoying bug in Powershell_ISE since Server 2022 and Windows 11 21h2:
 
 <img width="782" height="595" alt="image" src="https://github.com/user-attachments/assets/8283fa3a-8566-4af8-809d-257acdcffe76" />
 
-As you can see: It works in a real shell. Since I cannot install Visual Studio and other things on Customers Servers just to work around this bug we, the admins, still rely on Powershell_ISE.
+As you can see: It works in a real shell. Since I cannot install Visual Studio and other things on customers servers just to work around this bugW we, the admins, still rely on Powershell_ISE.
 Run that script, and then you will have working -LiteralPath back.
+
 
 <img width="903" height="630" alt="image" src="https://github.com/user-attachments/assets/8cff3473-69fd-4f69-b02b-3295c2151ae0" />
 
